@@ -89,7 +89,7 @@
         System.Reflection.Assembly.GetExecutingAssembly()
             .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
-            .FirstOrDefault()?.InformationalVersion.Split('+')[0] ?? "1.0.0";
+            .FirstOrDefault()?.InformationalVersion.Split('+')[0] ?? "1.1.0";
 
     protected override async Task OnInitializedAsync()
     {

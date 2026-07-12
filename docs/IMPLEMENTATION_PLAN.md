@@ -39,6 +39,8 @@ Entities (all with `Id`, most with `CreatedAt`/`UpdatedAt`; soft-delete where no
 | `ItemLoan` | Lending history (Phase 3) |
 | `InventoryAudit` + `InventoryAuditItem` | Location audits (Phase 3) |
 | `ItemHistory` | Append-only change log (populated from Phase 1) |
+| `InventoryTransaction` | Stock-ledger movements: check-out / return / consume / restock (Phase 5) |
+| `Project` + `ProjectAllocation` | Projects and their reserved items (Phase 5) |
 | `ApplicationSetting` | Key/value app settings |
 
 Foreign keys use deliberate delete behaviours: `SetNull` for an item's category/location so items
@@ -72,6 +74,16 @@ See [PHASE1_CHECKLIST.md](PHASE1_CHECKLIST.md).
 - Reverse-proxy/base-path support, MFA surfacing, and a security review.
 - Security headers/CSP, data-protection key persistence, deployment hardening, and integration
   tests. See [PHASE4_CHECKLIST.md](PHASE4_CHECKLIST.md).
+
+### Phase 5 — Projects & AI planning ✅ (complete)
+- Measured **units** + decimal quantities; a take-out/put-back/use/restock **stock ledger**
+  (on-hand / available / checked-out).
+- **Projects** that reserve items from inventory and, at close-out, consume what was used and
+  return the rest.
+- An **AI project planner**: plain-language description → bill of materials → local inventory match
+  (locations + shopping list) → reserve into a project. New entities: InventoryTransaction, Project,
+  ProjectAllocation. See [PHASE5_CHECKLIST.md](PHASE5_CHECKLIST.md) and
+  [PROJECTS_AND_PLANNING.md](PROJECTS_AND_PLANNING.md).
 
 ## After each phase
 

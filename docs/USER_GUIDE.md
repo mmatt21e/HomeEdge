@@ -104,6 +104,29 @@ The **Export** panel also offers CSV (for spreadsheets) and a full JSON backup.
 
 Remember to also back up the **attachments** folder — see the Backup & Restore guide.
 
+## Measuring amounts, and taking stock out
+
+Items have a **Quantity** and an optional **Unit** (leave it blank for a count, or set "ft", "m",
+"box"…; amounts can be fractional). On an item's page the **Stock** panel shows **on hand**,
+**available**, and **checked out**, with buttons to **Take out** (reserve/borrow), **Put back**
+(return), **Use** (consume permanently), and **Restock** (add more). Example: 100 ft of wire →
+*Take out* 25 → available 75; *Use* those 25 → on hand 75.
+
+## Projects
+
+**Projects** gather the tools and materials for a job. Create one under **Projects**, then **add
+items** (search, pick, set a quantity, tick *Consumable* for materials). Adding an item **reserves**
+it from inventory and shows its **location**. When you finish, **Complete** the project and enter how
+much of each item you used — consumables are deducted, the rest is returned. **Cancel** returns
+everything.
+
+## Plan a project with AI
+
+If an AI provider is configured, **Projects → Plan with AI**: describe the job in plain language and
+HomeStock proposes the tools/materials, matches them to your inventory (showing what you have, where
+it is, and a shopping list of what's missing), and reserves the ones you pick into a new project.
+See the [Projects & AI Planning guide](PROJECTS_AND_PLANNING.md) to set it up.
+
 ## Reviewing activity
 
 **Settings → Recent activity** (`/activity`) shows the latest changes across your inventory —

@@ -11,7 +11,10 @@ later without rewriting anything.
 > installers/upgraders** with an automated release pipeline; **Phase 3** — lending, location audits
 > with discrepancy reports, printable inventory/insurance reports, backup & restore, and a
 > change-activity feed; **Phase 4** — PWA install, reverse-proxy/sub-path support, MFA, security
-> headers/CSP, deployment hardening, and integration tests. See the phase checklists in
+> headers/CSP, deployment hardening, and integration tests; **Phase 5** — measured units + decimal
+> quantities, a take-out/put-back/use/restock stock ledger, **projects** that reserve items and
+> settle up at close-out, and an **AI project planner** that turns a plain-language job into a
+> bill of materials matched to your inventory. See the phase checklists in
 > [`docs/`](docs/) and [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ---
@@ -118,11 +121,11 @@ In **Development** the seed creates:
 dotnet test HomeStock.slnx
 ```
 
-54 tests run on every build: 49 unit tests over the category, location, item, dashboard,
-attachment, import/export, lending, audit, backup/restore, and AI vision-extraction logic
-(against a real in-memory SQLite database and a stubbed HTTP handler), plus 5 in-process
-**integration tests** (WebApplicationFactory) that exercise the real pipeline — health endpoints,
-security headers, anonymous→login redirect, and API authorization.
+75 tests run on every build: 70 unit tests over the category, location, item, dashboard,
+attachment, import/export, lending, audit, backup/restore, AI vision-extraction, inventory ledger,
+project, and AI-planning logic (against a real in-memory SQLite database and a stubbed HTTP
+handler), plus 5 in-process **integration tests** (WebApplicationFactory) that exercise the real
+pipeline — health endpoints, security headers, anonymous→login redirect, and API authorization.
 
 ---
 
@@ -164,6 +167,24 @@ own set — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#databases-and-migr
 - **Responsive UI** — mobile-first, large touch targets, bottom nav on phones, sidebar on
   desktop, **dark/light/system themes**, toasts, confirmations, empty states, loading
   indicators, and an installable PWA shell.
+
+## Feature: Projects & AI planning (Phase 5)
+
+Measure what you own, take it out and put it back, and gather the items for a job into a project —
+optionally planned by AI:
+
+- **Units & decimal quantities** — track "100 ft of wire", not just counts; amounts can be fractional.
+- **Stock ledger** — on each item, *Take out / Put back / Use / Restock* with an accurate
+  **on-hand / available / checked-out** position and a full stock history.
+- **Projects** — reserve the tools and materials for a job (each shows its **location**), then at
+  close-out **consume** what you used and **return** the rest (100 ft spool → use 25 → 75 left; a
+  drill comes back).
+- **AI project planner** — describe a job in plain language; HomeStock proposes the bill of
+  materials and **matches it to your inventory locally** (only the description leaves your network),
+  showing what you have, **where it is**, and a shopping list of what's missing — then reserves it
+  into a project. Reuses your photo-import provider key.
+
+Full workflow and setup: [`docs/PROJECTS_AND_PLANNING.md`](docs/PROJECTS_AND_PLANNING.md).
 
 ## Feature: Photo → Inventory (AI vision)
 
@@ -215,6 +236,8 @@ browser. Setup and provider examples: [`docs/PHOTO_IMPORT.md`](docs/PHOTO_IMPORT
 | [Phase 2 checklist](docs/PHASE2_CHECKLIST.md) | What was delivered in Phase 2 |
 | [Phase 3 checklist](docs/PHASE3_CHECKLIST.md) | What was delivered in Phase 3 |
 | [Phase 4 checklist](docs/PHASE4_CHECKLIST.md) | Hardening, PWA, MFA, tests + security review |
+| [Phase 5 checklist](docs/PHASE5_CHECKLIST.md) | Units, stock ledger, projects, AI planner |
+| [Projects & AI planning](docs/PROJECTS_AND_PLANNING.md) | Units, take-out/put-back, projects, AI planner |
 | [Releases & installers](docs/RELEASES.md) | Downloadable installers, upgrades, cutting releases |
 | [Photo → inventory](docs/PHOTO_IMPORT.md) | Enable AI photo import (free & local provider options) |
 | [Architecture](docs/ARCHITECTURE.md) | Layers, DI, data model, migrations |

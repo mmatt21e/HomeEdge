@@ -82,6 +82,19 @@ model) or an Anthropic-compatible gateway. Just set `BaseUrl`, `Model`, and `Api
 4. Optionally assign them all to a location and attach the photo to the created items.
 5. **Create** — the items are added (and appear in the change history).
 
+## Also powers: the AI project planner
+
+The same providers drive the **AI project planner** (Projects → Plan with AI), which turns a
+plain-language project description into a bill of materials matched to your inventory. It uses a
+**text** model via the `Planner` config section, and by default reuses this Vision provider's base
+URL and key — you only need to add a text model:
+
+```
+Planner__Model=meta-llama/llama-3.1-8b-instruct     # or gemini-2.0-flash, or a local Ollama text model
+```
+
+See [PROJECTS_AND_PLANNING.md](PROJECTS_AND_PLANNING.md) for the full workflow.
+
 ## Tips & limitations
 
 - Clear, well-lit, close photos work best; busy scenes may miss or merge items.
