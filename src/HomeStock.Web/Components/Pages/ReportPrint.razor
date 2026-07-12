@@ -54,7 +54,7 @@ else
                         @if (Insurance) { <td>@r.Manufacturer</td> <td>@r.ModelNumber</td> }
                         <td>@r.SerialNumber</td>
                         @if (!Insurance) { <td>@r.Barcode</td> }
-                        <td class="text-end">@r.Quantity</td>
+                        <td class="text-end">@CommonUnits.Format(r.Quantity, r.Unit)</td>
                         <td>@DisplayHelpers.Label(r.Condition)</td>
                         @if (Insurance) { <td>@r.PurchaseDate?.ToString("yyyy-MM-dd")</td> }
                         <td class="text-end">@r.PurchasePrice?.ToString("C2")</td>

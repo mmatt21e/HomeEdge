@@ -5,7 +5,7 @@ public record CountByName(string Name, int Count);
 /// <summary>Aggregate figures and lists shown on the dashboard.</summary>
 public record DashboardDto(
     int TotalItemRecords,
-    int TotalQuantity,
+    decimal TotalQuantity,
     decimal EstimatedTotalValue,
     int LoanedOutCount,
     int MissingPhotoCount,

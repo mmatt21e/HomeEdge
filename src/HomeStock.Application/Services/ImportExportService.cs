@@ -54,6 +54,7 @@ public class ImportExportService(
                 csv.WriteField(i.CategoryName);
                 csv.WriteField(i.Subcategory);
                 csv.WriteField(i.Quantity);
+                csv.WriteField(i.Unit);
                 csv.WriteField(i.Manufacturer);
                 csv.WriteField(i.Brand);
                 csv.WriteField(i.ModelNumber);
@@ -91,7 +92,7 @@ public class ImportExportService(
             tags = await db.Tags.AsNoTracking().Select(t => new { t.Id, t.Name }).ToListAsync(ct),
             items = await db.Items.AsNoTracking().Select(i => new
             {
-                i.Id, i.Name, i.Description, i.Notes, i.CategoryId, i.Subcategory, i.Quantity,
+                i.Id, i.Name, i.Description, i.Notes, i.CategoryId, i.Subcategory, i.Quantity, i.Unit,
                 i.Manufacturer, i.Brand, i.ModelNumber, i.SerialNumber, i.Barcode,
                 i.PurchaseDate, i.PurchaseLocation, i.PurchasePrice, i.EstimatedValue,
                 Condition = i.Condition.ToString(), i.WarrantyExpiration, i.LocationId, i.Container,
@@ -278,14 +279,15 @@ public class ImportExportService(
             Barcode = Cell(ImportFields.Barcode),
             PurchaseLocation = Cell(ImportFields.PurchaseLocation),
             Container = Cell(ImportFields.Container),
+            Unit = Cell(ImportFields.Unit),
             Notes = Cell(ImportFields.Notes),
         };
 
         var qty = Cell(ImportFields.Quantity);
         if (!string.IsNullOrWhiteSpace(qty))
         {
-            if (int.TryParse(qty, NumberStyles.Integer, CultureInfo.InvariantCulture, out var q)) model.Quantity = q;
-            else errors.Add($"Quantity '{qty}' is not a whole number.");
+            if (decimal.TryParse(qty, NumberStyles.Number, CultureInfo.InvariantCulture, out var q)) model.Quantity = q;
+            else errors.Add($"Quantity '{qty}' is not a number.");
         }
 
         model.PurchasePrice = ParseDecimal(Cell(ImportFields.PurchasePrice), "Purchase price", errors);

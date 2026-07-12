@@ -34,8 +34,15 @@
             </div>
             <div class="col-6 col-md-3">
                 <label class="form-label">Quantity</label>
-                <InputNumber class="form-control" @bind-Value="Model.Quantity" />
+                <InputNumber class="form-control" @bind-Value="Model.Quantity" step="any" />
                 <ValidationMessage For="() => Model.Quantity" class="field-error" />
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label">Unit</label>
+                <input class="form-control" list="unit-options" placeholder="count" @bind="Model.Unit" />
+                <datalist id="unit-options">
+                    @foreach (var u in CommonUnits.All) { <option value="@u" /> }
+                </datalist>
             </div>
         </div>
         <div class="mt-3">

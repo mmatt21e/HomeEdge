@@ -89,7 +89,7 @@ public class BackupRestoreService(
             var entity = new InventoryItem
             {
                 Name = it.Name, Description = it.Description, Notes = it.Notes,
-                Subcategory = it.Subcategory, Quantity = it.Quantity <= 0 ? 1 : it.Quantity,
+                Subcategory = it.Subcategory, Quantity = it.Quantity <= 0 ? 1 : it.Quantity, Unit = it.Unit,
                 Manufacturer = it.Manufacturer, Brand = it.Brand, ModelNumber = it.ModelNumber,
                 SerialNumber = it.SerialNumber, Barcode = it.Barcode,
                 PurchaseDate = it.PurchaseDate, PurchaseLocation = it.PurchaseLocation,
@@ -185,7 +185,8 @@ public class BackupRestoreService(
         public string? Notes { get; set; }
         public int? CategoryId { get; set; }
         public string? Subcategory { get; set; }
-        public int Quantity { get; set; } = 1;
+        public decimal Quantity { get; set; } = 1;
+        public string? Unit { get; set; }
         public string? Manufacturer { get; set; }
         public string? Brand { get; set; }
         public string? ModelNumber { get; set; }

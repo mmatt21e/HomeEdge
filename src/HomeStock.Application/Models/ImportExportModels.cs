@@ -8,6 +8,7 @@ public static class ImportFields
     public const string Category = "Category";
     public const string Subcategory = "Subcategory";
     public const string Quantity = "Quantity";
+    public const string Unit = "Unit";
     public const string Manufacturer = "Manufacturer";
     public const string Brand = "Brand";
     public const string ModelNumber = "ModelNumber";
@@ -28,7 +29,7 @@ public static class ImportFields
     /// <summary>All mappable fields in a sensible display order.</summary>
     public static readonly string[] All =
     {
-        Name, Description, Category, Subcategory, Quantity, Manufacturer, Brand, ModelNumber,
+        Name, Description, Category, Subcategory, Quantity, Unit, Manufacturer, Brand, ModelNumber,
         SerialNumber, Barcode, PurchaseDate, PurchaseLocation, PurchasePrice, EstimatedValue,
         Condition, WarrantyExpiration, Location, Container, Status, Tags, Notes
     };

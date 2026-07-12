@@ -19,7 +19,8 @@ public record ReportRow(
     string? ModelNumber,
     string? SerialNumber,
     string? Barcode,
-    int Quantity,
+    decimal Quantity,
+    string? Unit,
     ItemCondition Condition,
     ItemStatus Status,
     DateOnly? PurchaseDate,
@@ -31,6 +32,6 @@ public record ReportDto(
     string FilterDescription,
     IReadOnlyList<ReportRow> Rows,
     int TotalRecords,
-    int TotalQuantity,
+    decimal TotalQuantity,
     decimal TotalPurchasePrice,
     decimal TotalEstimatedValue);

@@ -12,7 +12,8 @@ public record ItemDto(
     int? CategoryId,
     string? CategoryName,
     string? Subcategory,
-    int Quantity,
+    decimal Quantity,
+    string? Unit,
     string? Manufacturer,
     string? Brand,
     string? ModelNumber,
@@ -40,7 +41,8 @@ public record ItemListDto(
     string Name,
     string? CategoryName,
     string? LocationName,
-    int Quantity,
+    decimal Quantity,
+    string? Unit,
     ItemStatus Status,
     ItemCondition Condition,
     decimal? EstimatedValue,
@@ -66,8 +68,12 @@ public class ItemEditModel
     [StringLength(80)]
     public string? Subcategory { get; set; }
 
-    [Range(0, int.MaxValue)]
-    public int Quantity { get; set; } = 1;
+    [Range(0, 100_000_000)]
+    public decimal Quantity { get; set; } = 1;
+
+    /// <summary>Unit of measure (e.g. "ft", "m", "box"); blank means a plain count.</summary>
+    [StringLength(20)]
+    public string? Unit { get; set; }
 
     [StringLength(120)] public string? Manufacturer { get; set; }
     [StringLength(120)] public string? Brand { get; set; }
@@ -91,6 +97,25 @@ public class ItemEditModel
 
     /// <summary>Free-form tag names; resolved to Tag entities by the service.</summary>
     public List<string> Tags { get; set; } = new();
+}
+
+/// <summary>Suggested units of measure offered in the UI (free text is still allowed).</summary>
+public static class CommonUnits
+{
+    public static readonly string[] All =
+    {
+        "ft", "in", "yd", "m", "cm", "mm",
+        "box", "pack", "roll", "set", "pair",
+        "gal", "qt", "L", "ml",
+        "lb", "oz", "kg", "g"
+    };
+
+    /// <summary>Formats a quantity with its unit for display, e.g. "25 ft" or "×3".</summary>
+    public static string Format(decimal quantity, string? unit)
+    {
+        var q = quantity == Math.Floor(quantity) ? quantity.ToString("0") : quantity.ToString("0.###");
+        return string.IsNullOrWhiteSpace(unit) ? $"×{q}" : $"{q} {unit}";
+    }
 }
 
 /// <summary>Warranty state derived from the expiration date and a warning window.</summary>

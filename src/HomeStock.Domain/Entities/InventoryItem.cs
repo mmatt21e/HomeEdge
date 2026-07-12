@@ -21,7 +21,17 @@ public class InventoryItem : BaseEntity, ISoftDeletable
     /// <summary>Free-text sub-classification within a category (kept simple for Phase 1).</summary>
     public string? Subcategory { get; set; }
 
-    public int Quantity { get; set; } = 1;
+    /// <summary>
+    /// Amount on hand, expressed in <see cref="Unit"/>. Decimal so measured goods work
+    /// (e.g. 25.5 ft of wire); for countable items it holds whole numbers.
+    /// </summary>
+    public decimal Quantity { get; set; } = 1;
+
+    /// <summary>
+    /// Unit of measure for <see cref="Quantity"/> (e.g. "ft", "m", "box"). Null/empty means a
+    /// plain count of individual items.
+    /// </summary>
+    public string? Unit { get; set; }
 
     // --- Product identifiers ---
     public string? Manufacturer { get; set; }

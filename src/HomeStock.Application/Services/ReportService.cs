@@ -40,7 +40,7 @@ public class ReportService(IApplicationDbContext db, ILocationService locations)
                 i.Category != null ? i.Category.Name : null,
                 i.Location != null ? i.Location.Name : null,
                 i.Container, i.Manufacturer, i.ModelNumber, i.SerialNumber, i.Barcode,
-                i.Quantity, i.Condition, i.Status,
+                i.Quantity, i.Unit, i.Condition, i.Status,
                 i.PurchaseDate, i.PurchasePrice, i.EstimatedValue, i.WarrantyExpiration))
             .ToListAsync(ct);
 

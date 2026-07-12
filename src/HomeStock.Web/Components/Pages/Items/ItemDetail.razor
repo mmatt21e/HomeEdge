@@ -55,7 +55,7 @@ else
                 <dl class="row mb-0">
                     <Field Label="Category" Value="@_item.CategoryName" />
                     <Field Label="Subcategory" Value="@_item.Subcategory" />
-                    <Field Label="Quantity" Value="@_item.Quantity.ToString()" />
+                    <Field Label="Quantity" Value="@CommonUnits.Format(_item.Quantity, _item.Unit)" />
                     <Field Label="Location" Value="@_item.LocationName" />
                     <Field Label="Container / bin" Value="@_item.Container" />
                     <Field Label="Manufacturer" Value="@_item.Manufacturer" />

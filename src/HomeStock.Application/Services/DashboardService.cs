@@ -15,7 +15,7 @@ public class DashboardService(IApplicationDbContext db) : IDashboardService
         var active = db.Items.AsNoTracking().Where(i => !i.IsArchived);
 
         var totalRecords = await active.CountAsync(ct);
-        var totalQuantity = await active.SumAsync(i => (int?)i.Quantity, ct) ?? 0;
+        var totalQuantity = await active.SumAsync(i => (decimal?)i.Quantity, ct) ?? 0m;
         var totalValue = await active.SumAsync(i => (decimal?)i.EstimatedValue, ct) ?? 0m;
         var loanedCount = await active.CountAsync(i => i.Status == ItemStatus.Loaned, ct);
         var missingPhoto = await active.CountAsync(i => !i.Attachments.Any(a => a.Type == AttachmentType.Photo), ct);
@@ -53,7 +53,7 @@ public class DashboardService(IApplicationDbContext db) : IDashboardService
     private static readonly System.Linq.Expressions.Expression<Func<Domain.Entities.InventoryItem, ItemListDto>> Project =
         i => new ItemListDto(
             i.Id, i.Name, i.Category != null ? i.Category.Name : null,
-            i.Location != null ? i.Location.Name : null, i.Quantity, i.Status, i.Condition,
+            i.Location != null ? i.Location.Name : null, i.Quantity, i.Unit, i.Status, i.Condition,
             i.EstimatedValue, i.Barcode, i.IsArchived,
             i.Attachments.Any(a => a.Type == AttachmentType.Photo), i.WarrantyExpiration);
 }

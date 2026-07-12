@@ -51,6 +51,8 @@ public class InventoryItemConfiguration : IEntityTypeConfiguration<InventoryItem
         b.Property(i => i.Barcode).HasMaxLength(120);
         b.Property(i => i.PurchaseLocation).HasMaxLength(200);
         b.Property(i => i.Container).HasMaxLength(120);
+        b.Property(i => i.Unit).HasMaxLength(20);
+        b.Property(i => i.Quantity).HasPrecision(18, 3);
         b.Property(i => i.PurchasePrice).HasPrecision(18, 2);
         b.Property(i => i.EstimatedValue).HasPrecision(18, 2);
 

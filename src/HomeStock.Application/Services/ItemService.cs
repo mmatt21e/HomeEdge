@@ -110,7 +110,7 @@ public class ItemService(
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(i => new ItemListDto(
                 i.Id, i.Name, i.Category != null ? i.Category.Name : null,
-                i.Location != null ? i.Location.Name : null, i.Quantity, i.Status, i.Condition,
+                i.Location != null ? i.Location.Name : null, i.Quantity, i.Unit, i.Status, i.Condition,
                 i.EstimatedValue, i.Barcode, i.IsArchived,
                 i.Attachments.Any(a => a.Type == AttachmentType.Photo), i.WarrantyExpiration))
             .ToListAsync(ct);
@@ -271,6 +271,7 @@ public class ItemService(
         e.CategoryId = m.CategoryId;
         e.Subcategory = m.Subcategory?.Trim();
         e.Quantity = m.Quantity;
+        e.Unit = string.IsNullOrWhiteSpace(m.Unit) ? null : m.Unit.Trim();
         e.Manufacturer = m.Manufacturer?.Trim();
         e.Brand = m.Brand?.Trim();
         e.ModelNumber = m.ModelNumber?.Trim();
@@ -351,7 +352,7 @@ public class ItemService(
     private static readonly System.Linq.Expressions.Expression<Func<InventoryItem, ItemDto>> ProjectToDto =
         i => new ItemDto(
             i.Id, i.Name, i.Description, i.Notes, i.CategoryId,
-            i.Category != null ? i.Category.Name : null, i.Subcategory, i.Quantity,
+            i.Category != null ? i.Category.Name : null, i.Subcategory, i.Quantity, i.Unit,
             i.Manufacturer, i.Brand, i.ModelNumber, i.SerialNumber, i.Barcode,
             i.PurchaseDate, i.PurchaseLocation, i.PurchasePrice, i.EstimatedValue, i.Condition,
             i.WarrantyExpiration, i.LocationId, i.Location != null ? i.Location.Name : null, i.Container,
