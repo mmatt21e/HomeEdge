@@ -35,6 +35,11 @@ services:
       Vision__Model: "${Vision__Model:-}"
       Vision__ApiKey: "${Vision__ApiKey:-}"
       Vision__RequireApiKey: "${Vision__RequireApiKey:-true}"
+      # Optional AI project planner (reuses the Vision provider if only a text Model is set).
+      Planner__BaseUrl: "${Planner__BaseUrl:-}"
+      Planner__Model: "${Planner__Model:-}"
+      Planner__ApiKey: "${Planner__ApiKey:-}"
+      Planner__RequireApiKey: "${Planner__RequireApiKey:-true}"
     volumes:
       - homestock-data:/data
       - ./deploy/backups:/backups

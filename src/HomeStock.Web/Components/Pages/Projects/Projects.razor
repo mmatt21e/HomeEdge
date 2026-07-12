@@ -3,6 +3,7 @@
 @rendermode InteractiveServer
 @using HomeStock.Domain.Enums
 @inject IProjectService ProjectService
+@inject IProjectPlanningService Planning
 @inject NavigationManager Nav
 @inject ToastService Toasts
 
@@ -11,7 +12,13 @@
 <div class="page-header">
     <h1>Projects</h1>
     <AuthorizeView Policy="@Roles.CanEditPolicy">
-        <button class="btn btn-primary" @onclick="() => _creating = true"><i class="bi bi-plus-lg"></i> New project</button>
+        <div class="d-flex gap-2">
+            @if (Planning.IsConfigured)
+            {
+                <a class="btn btn-outline-primary" href="/projects/plan"><i class="bi bi-stars"></i> Plan with AI</a>
+            }
+            <button class="btn btn-primary" @onclick="() => _creating = true"><i class="bi bi-plus-lg"></i> New project</button>
+        </div>
     </AuthorizeView>
 </div>
 

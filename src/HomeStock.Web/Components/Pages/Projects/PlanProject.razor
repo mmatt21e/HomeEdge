@@ -1,0 +1,176 @@
+@page "/projects/plan"
+@attribute [Authorize(Policy = HomeStock.Domain.Enums.Roles.CanEditPolicy)]
+@rendermode InteractiveServer
+@using HomeStock.Domain.Enums
+@inject IProjectPlanningService Planning
+@inject NavigationManager Nav
+@inject ToastService Toasts
+
+<PageTitle>Plan a project · HomeStock</PageTitle>
+
+<div class="page-header">
+    <div>
+        <a href="/projects" class="small text-secondary"><i class="bi bi-chevron-left"></i> Projects</a>
+        <h1>Plan a project</h1>
+    </div>
+</div>
+
+@if (!Planning.IsConfigured)
+{
+    <EmptyState Icon="bi-stars" Title="AI planning isn't set up yet"
+                Message="Configure a text model (you can reuse your photo-import provider). See the Photo Import / AI guide in the docs.">
+        <Action><a class="btn btn-outline-secondary" href="/projects">Back to projects</a></Action>
+    </EmptyState>
+}
+else if (_step == 1)
+{
+    <div class="panel">
+        <p class="text-secondary small">
+            Describe what you're doing and HomeStock will suggest the tools and materials, then check them
+            against your inventory — showing what you have, where it is, and what you're missing.
+            Powered by <span class="tree-code">@Planning.ProviderLabel</span>.
+        </p>
+        <div class="mb-2">
+            <label class="form-label small mb-1">Project name</label>
+            <input class="form-control" @bind="_name" placeholder="e.g. Garage subpanel circuit" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label small mb-1">What are you doing?</label>
+            <textarea class="form-control" rows="4" @bind="_description"
+                      placeholder="e.g. Run a new 20A circuit ~25 ft from the panel to a new garage outlet."></textarea>
+        </div>
+        <button class="btn btn-primary" @onclick="Plan" disabled="@(_busy || string.IsNullOrWhiteSpace(_description))">
+            @if (_busy) { <span class="spinner-border spinner-border-sm"></span> }
+            <i class="bi bi-stars"></i> Plan it
+        </button>
+    </div>
+}
+else if (_step == 2 && _plan is not null)
+{
+    <div class="panel mb-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h3 class="h6 mb-0">Suggested items</h3>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="Restart">Start over</button>
+        </div>
+
+        @if (_rows.Count == 0)
+        {
+            <p class="text-secondary small mb-0">Nothing matched your inventory. See the shopping list below.</p>
+        }
+        else
+        {
+            <p class="text-secondary small">In your inventory — tick what to reserve for the project.</p>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th style="width:2rem"></th><th>Item</th><th>Reserve</th><th>Available</th><th>Location</th><th>Consumable</th></tr></thead>
+                    <tbody>
+                        @foreach (var r in _rows)
+                        {
+                            <tr class="@(r.Include ? "" : "text-secondary")">
+                                <td><input type="checkbox" class="form-check-input" @bind="r.Include" /></td>
+                                <td>
+                                    @r.Match.MatchedItemName
+                                    <div class="small text-secondary">for “@r.Match.Needed.Name”</div>
+                                </td>
+                                <td><input type="number" step="any" min="0" max="@r.Match.AvailableQuantity"
+                                           class="form-control form-control-sm" style="width:6rem" @bind="r.ReserveQty" /></td>
+                                <td class="small">@CommonUnits.Format(r.Match.AvailableQuantity ?? 0, r.Match.Unit)</td>
+                                <td class="small"><i class="bi bi-geo-alt"></i> @r.Match.LocationDisplay</td>
+                                <td><input type="checkbox" class="form-check-input" @bind="r.Consumable" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    @if (_plan.Missing.Any())
+    {
+        <div class="panel mb-3">
+            <h3 class="h6"><i class="bi bi-cart"></i> Shopping list (not in inventory)</h3>
+            <ul class="mb-0">
+                @foreach (var m in _plan.Missing)
+                {
+                    <li>@m.Needed.Name @if (m.Needed.Quantity is { } q) { <span class="text-secondary">— @CommonUnits.Format(q, m.Needed.Unit)</span> }</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="panel">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6">
+                <label class="form-label small mb-1">Project name</label>
+                <input class="form-control" @bind="_name" />
+            </div>
+            <div class="col-12 col-md-6 d-flex justify-content-md-end align-items-end">
+                <button class="btn btn-primary" @onclick="CreateProject" disabled="@_busy">
+                    @if (_busy) { <span class="spinner-border spinner-border-sm"></span> }
+                    Create project &amp; reserve @_rows.Count(r => r.Include && r.ReserveQty > 0) item(s)
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private int _step = 1;
+    private bool _busy;
+    private string? _name;
+    private string? _description;
+    private ProjectPlan? _plan;
+    private List<Row> _rows = new();
+
+    private async Task Plan()
+    {
+        _busy = true;
+        try
+        {
+            var result = await Planning.PlanAsync(_description!);
+            if (!result.Succeeded) { Toasts.Error(string.Join(" ", result.Errors)); return; }
+            _plan = result.Value;
+            _rows = _plan!.InStock.Select(m => new Row
+            {
+                Match = m,
+                Include = true,
+                Consumable = m.Needed.Kind == ItemKind.Material,
+                ReserveQty = Math.Min(m.Needed.Quantity ?? 1, m.AvailableQuantity ?? 0)
+            }).ToList();
+            if (string.IsNullOrWhiteSpace(_name))
+                _name = Truncate(_description!, 60);
+            _step = 2;
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task CreateProject()
+    {
+        if (string.IsNullOrWhiteSpace(_name)) { Toasts.Warning("Give the project a name."); return; }
+        _busy = true;
+        try
+        {
+            var selections = _rows.Where(r => r.Include && r.ReserveQty > 0)
+                .Select(r => new PlanSelection(r.Match.MatchedItemId!.Value, r.ReserveQty, r.Consumable))
+                .ToList();
+            var result = await Planning.CreateProjectFromPlanAsync(_name!, _description, selections);
+            if (!result.Succeeded) { Toasts.Error(string.Join(" ", result.Errors)); return; }
+            foreach (var w in result.Warnings) Toasts.Warning(w);
+            Toasts.Success("Project created.");
+            Nav.NavigateTo($"/projects/{result.Value}");
+        }
+        finally { _busy = false; }
+    }
+
+    private void Restart() { _step = 1; _plan = null; _rows = new(); }
+
+    private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max].Trim() + "…";
+
+    private sealed class Row
+    {
+        public PlanMatch Match { get; set; } = default!;
+        public bool Include { get; set; } = true;
+        public decimal ReserveQty { get; set; }
+        public bool Consumable { get; set; }
+    }
+}

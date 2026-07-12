@@ -54,6 +54,11 @@ public static class DependencyInjection
         services.AddHttpClient(Vision.OpenAiCompatibleVisionExtractor.HttpClientName);
         services.AddScoped<IVisionExtractor, Vision.OpenAiCompatibleVisionExtractor>();
 
+        // AI project planner (text endpoint; credentials fall back to the Vision provider).
+        services.Configure<Ai.PlannerOptions>(configuration.GetSection(Ai.PlannerOptions.SectionName));
+        services.AddHttpClient(Ai.OpenAiCompatiblePlanner.HttpClientName);
+        services.AddScoped<IProjectPlanner, Ai.OpenAiCompatiblePlanner>();
+
         return services;
     }
 
