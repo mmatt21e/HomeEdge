@@ -174,6 +174,33 @@ public class InventoryTransactionConfiguration : IEntityTypeConfiguration<Invent
     }
 }
 
+public class ProjectConfiguration : IEntityTypeConfiguration<Project>
+{
+    public void Configure(EntityTypeBuilder<Project> b)
+    {
+        b.Property(p => p.Name).HasMaxLength(160).IsRequired();
+        b.Property(p => p.Description).HasMaxLength(2000);
+        b.Property(p => p.UserId).HasMaxLength(450);
+        b.Property(p => p.UserName).HasMaxLength(256);
+        b.HasIndex(p => p.Status);
+    }
+}
+
+public class ProjectAllocationConfiguration : IEntityTypeConfiguration<ProjectAllocation>
+{
+    public void Configure(EntityTypeBuilder<ProjectAllocation> b)
+    {
+        b.Property(a => a.QuantityAllocated).HasPrecision(18, 3);
+        b.Property(a => a.QuantityConsumed).HasPrecision(18, 3);
+        b.Property(a => a.Note).HasMaxLength(500);
+        b.HasIndex(a => a.ProjectId);
+        b.HasIndex(a => a.ItemId);
+        b.HasOne(a => a.Project).WithMany(p => p.Allocations).HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Cascade);
+        // Restrict deleting an item that is allocated to a project; return it first.
+        b.HasOne(a => a.Item).WithMany().HasForeignKey(a => a.ItemId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 public class ApplicationSettingConfiguration : IEntityTypeConfiguration<ApplicationSetting>
 {
     public void Configure(EntityTypeBuilder<ApplicationSetting> b)

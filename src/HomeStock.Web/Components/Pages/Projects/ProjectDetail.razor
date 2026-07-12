@@ -1,0 +1,253 @@
+@page "/projects/{Id:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using HomeStock.Domain.Enums
+@inject IProjectService ProjectService
+@inject IItemService ItemService
+@inject NavigationManager Nav
+@inject ToastService Toasts
+
+<PageTitle>@(_project?.Name ?? "Project") · HomeStock</PageTitle>
+
+@if (_project is null)
+{
+    <LoadingIndicator />
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <a href="/projects" class="small text-secondary"><i class="bi bi-chevron-left"></i> Projects</a>
+            <h1 class="d-flex align-items-center gap-2">
+                @_project.Name
+                @switch (_project.Status)
+                {
+                    case ProjectStatus.Open: <span class="badge text-bg-warning">Open</span> break;
+                    case ProjectStatus.Completed: <span class="badge text-bg-success">Completed</span> break;
+                    default: <span class="badge text-bg-secondary">Cancelled</span> break;
+                }
+            </h1>
+        </div>
+        @if (_project.Status == ProjectStatus.Open)
+        {
+            <AuthorizeView Policy="@Roles.CanEditPolicy">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary" @onclick="Cancel">Cancel project</button>
+                    <button class="btn btn-primary" @onclick="BeginCloseout" disabled="@(_project.Allocations.Count == 0)">
+                        <i class="bi bi-check2-all"></i> Complete
+                    </button>
+                </div>
+            </AuthorizeView>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_project.Description))
+    {
+        <p class="text-secondary">@_project.Description</p>
+    }
+
+    @* ---- Close-out form ---- *@
+    @if (_closingOut)
+    {
+        <div class="panel mb-3">
+            <h3 class="h6">Close out — how much did you use?</h3>
+            <p class="text-secondary small">Consumed amounts are deducted from inventory; the rest is returned. Tools default to 0 used.</p>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th>Item</th><th>Reserved</th><th style="width:8rem">Used</th></tr></thead>
+                    <tbody>
+                        @foreach (var a in _project.Allocations)
+                        {
+                            <tr>
+                                <td>@a.ItemName</td>
+                                <td>@CommonUnits.Format(a.QuantityAllocated, a.Unit)</td>
+                                <td><input type="number" step="any" min="0" max="@a.QuantityAllocated"
+                                           class="form-control form-control-sm" @bind="_used[a.Id]" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" @onclick="ConfirmCloseout" disabled="@_busy">Confirm close-out</button>
+                <button class="btn btn-outline-secondary" @onclick="() => _closingOut = false">Back</button>
+            </div>
+        </div>
+    }
+
+    @* ---- Allocations ---- *@
+    <div class="panel mb-3">
+        <h3 class="h6"><i class="bi bi-box-seam"></i> Items for this project</h3>
+        @if (_project.Allocations.Count == 0)
+        {
+            <p class="text-secondary small mb-0">No items reserved yet. Add what you need below.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th>Item</th><th>Reserved</th><th>Location</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var a in _project.Allocations)
+                        {
+                            <tr>
+                                <td>
+                                    <a href="@($"/items/{a.ItemId}")" class="text-decoration-none">@a.ItemName</a>
+                                    @if (a.Consumable) { <span class="badge text-bg-light ms-1">consumable</span> }
+                                    @if (_project.Status != ProjectStatus.Open && a.QuantityConsumed > 0)
+                                    {
+                                        <div class="small text-secondary">Used @CommonUnits.Format(a.QuantityConsumed, a.Unit)</div>
+                                    }
+                                </td>
+                                <td>@CommonUnits.Format(a.QuantityAllocated, a.Unit)</td>
+                                <td class="small"><i class="bi bi-geo-alt"></i> @a.LocationDisplay</td>
+                                <td class="text-end">
+                                    @if (_project.Status == ProjectStatus.Open)
+                                    {
+                                        <AuthorizeView Policy="@Roles.CanEditPolicy">
+                                            <button class="btn btn-sm btn-outline-danger" title="Return to inventory" @onclick="() => Remove(a.Id)"><i class="bi bi-x-lg"></i></button>
+                                        </AuthorizeView>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    @* ---- Add item ---- *@
+    @if (_project.Status == ProjectStatus.Open)
+    {
+        <AuthorizeView Policy="@Roles.CanEditPolicy">
+            <div class="panel">
+                <h3 class="h6"><i class="bi bi-plus-circle"></i> Add an item</h3>
+                @if (_picked is null)
+                {
+                    <input class="form-control mb-2" placeholder="Search items to add…" @bind="_search" @bind:event="oninput" @onkeyup="DoSearch" />
+                    @if (_matches.Count > 0)
+                    {
+                        <div class="d-flex flex-column gap-1">
+                            @foreach (var m in _matches)
+                            {
+                                <button class="btn btn-outline-secondary text-start" @onclick="() => Pick(m)">
+                                    @m.Name <span class="text-secondary small">@CommonUnits.Format(m.Quantity, m.Unit)@(m.LocationName is { } l ? $" · {l}" : "")</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(_search))
+                    {
+                        <p class="text-secondary small mb-0">No matches.</p>
+                    }
+                }
+                else
+                {
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12 col-md-5">
+                            <label class="form-label small mb-1">Item</label>
+                            <div class="form-control-plaintext">@_picked.Name</div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small mb-1">Quantity@(string.IsNullOrEmpty(_picked.Unit) ? "" : $" ({_picked.Unit})")</label>
+                            <input type="number" step="any" min="0" class="form-control form-control-sm" @bind="_addQty" />
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox" id="consumable" @bind="_addConsumable" />
+                                <label class="form-check-label small" for="consumable">Consumable</label>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-2 d-flex gap-2">
+                            <button class="btn btn-primary btn-sm" @onclick="AddPicked" disabled="@_busy">Add</button>
+                            <button class="btn btn-outline-secondary btn-sm" @onclick="ClearPick">Cancel</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </AuthorizeView>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private ProjectDto? _project;
+    private string? _search;
+    private IReadOnlyList<ItemListDto> _matches = Array.Empty<ItemListDto>();
+    private ItemListDto? _picked;
+    private decimal _addQty = 1;
+    private bool _addConsumable;
+    private bool _closingOut;
+    private bool _busy;
+    private readonly Dictionary<int, decimal> _used = new();
+
+    protected override async Task OnParametersSetAsync() => await Load();
+
+    private async Task Load()
+    {
+        _project = await ProjectService.GetAsync(Id);
+        if (_project is null) Nav.NavigateTo("/projects");
+    }
+
+    private async Task DoSearch()
+    {
+        if (string.IsNullOrWhiteSpace(_search)) { _matches = Array.Empty<ItemListDto>(); return; }
+        var page = await ItemService.SearchAsync(new ItemQuery { Search = _search, PageSize = 8 });
+        _matches = page.Items;
+    }
+
+    private void Pick(ItemListDto item) { _picked = item; _addQty = 1; _addConsumable = false; }
+    private void ClearPick() { _picked = null; _search = null; _matches = Array.Empty<ItemListDto>(); }
+
+    private async Task AddPicked()
+    {
+        if (_picked is null) return;
+        _busy = true;
+        try
+        {
+            var r = await ProjectService.AddAllocationAsync(Id, _picked.Id, _addQty, _addConsumable, null);
+            if (!r.Succeeded) { Toasts.Error(string.Join(" ", r.Errors)); return; }
+            Toasts.Success("Item reserved for the project.");
+            ClearPick();
+            await Load();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task Remove(int allocationId)
+    {
+        var r = await ProjectService.RemoveAllocationAsync(allocationId);
+        if (r.Succeeded) { Toasts.Info("Returned to inventory."); await Load(); } else Toasts.Error(string.Join(" ", r.Errors));
+    }
+
+    private void BeginCloseout()
+    {
+        _used.Clear();
+        foreach (var a in _project!.Allocations)
+            _used[a.Id] = a.Consumable ? a.QuantityAllocated : 0m;
+        _closingOut = true;
+    }
+
+    private async Task ConfirmCloseout()
+    {
+        _busy = true;
+        try
+        {
+            var lines = _used.Select(kv => new CloseoutLine(kv.Key, kv.Value)).ToList();
+            var r = await ProjectService.CompleteAsync(Id, lines);
+            if (!r.Succeeded) { Toasts.Error(string.Join(" ", r.Errors)); return; }
+            Toasts.Success("Project completed.");
+            _closingOut = false;
+            await Load();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task Cancel()
+    {
+        var r = await ProjectService.CancelAsync(Id);
+        if (r.Succeeded) { Toasts.Info("Project cancelled; items returned."); await Load(); } else Toasts.Error(string.Join(" ", r.Errors));
+    }
+}

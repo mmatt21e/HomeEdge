@@ -72,6 +72,17 @@ public enum HistoryAction
     Moved = 10
 }
 
+/// <summary>Lifecycle of a project that draws items from inventory.</summary>
+public enum ProjectStatus
+{
+    /// <summary>In progress — items may be allocated and are reserved from inventory.</summary>
+    Open = 0,
+    /// <summary>Finished — allocations were consumed or returned.</summary>
+    Completed = 1,
+    /// <summary>Abandoned — all allocations were returned, nothing consumed.</summary>
+    Cancelled = 2
+}
+
 /// <summary>A movement in the inventory ledger for an item.</summary>
 public enum TransactionType
 {

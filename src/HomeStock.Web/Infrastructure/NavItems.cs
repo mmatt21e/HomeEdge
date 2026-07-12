@@ -9,6 +9,7 @@ public static class NavItems
     {
         new("Dashboard", "",           "bi-speedometer2",      InBottomNav: true,  Match: true),
         new("Items",     "items",      "bi-box-seam",          InBottomNav: true),
+        new("Projects",  "projects",   "bi-hammer",            InBottomNav: false),
         new("Scan",      "scan",       "bi-upc-scan",          InBottomNav: true),
         new("Locations", "locations",  "bi-geo-alt",           InBottomNav: true),
         new("Categories","categories", "bi-tags",              InBottomNav: false),

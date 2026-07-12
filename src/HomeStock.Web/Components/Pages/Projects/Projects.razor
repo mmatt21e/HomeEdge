@@ -1,0 +1,93 @@
+@page "/projects"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using HomeStock.Domain.Enums
+@inject IProjectService ProjectService
+@inject NavigationManager Nav
+@inject ToastService Toasts
+
+<PageTitle>Projects · HomeStock</PageTitle>
+
+<div class="page-header">
+    <h1>Projects</h1>
+    <AuthorizeView Policy="@Roles.CanEditPolicy">
+        <button class="btn btn-primary" @onclick="() => _creating = true"><i class="bi bi-plus-lg"></i> New project</button>
+    </AuthorizeView>
+</div>
+
+<p class="text-secondary small">
+    A project reserves the items you need from inventory while you work, then at close-out consumes
+    what you used and returns the rest.
+</p>
+
+@if (_creating)
+{
+    <div class="panel mb-3">
+        <h3 class="h6">New project</h3>
+        <EditForm Model="_new" OnValidSubmit="Create">
+            <DataAnnotationsValidator />
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label class="form-label small mb-1">Name <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="_new.Name" placeholder="e.g. Garage subpanel circuit" />
+                    <ValidationMessage For="() => _new.Name" class="field-error" />
+                </div>
+                <div class="col-12 col-md-5">
+                    <label class="form-label small mb-1">Description</label>
+                    <InputText class="form-control" @bind-Value="_new.Description" />
+                </div>
+                <div class="col-12 col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Create</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => _creating = false">Cancel</button>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@if (_projects is null)
+{
+    <LoadingIndicator />
+}
+else if (_projects.Count == 0)
+{
+    <EmptyState Icon="bi-hammer" Title="No projects yet"
+                Message="Create a project to gather the tools and materials for a job in one place." />
+}
+else
+{
+    <div class="panel">
+        @foreach (var p in _projects)
+        {
+            <a class="tree-row text-decoration-none text-body" href="@($"/projects/{p.Id}")">
+                <span class="flex-grow-1">
+                    <span class="tree-name">@p.Name</span>
+                    <span class="text-secondary small ms-2">@p.ItemCount item(s)</span>
+                </span>
+                @switch (p.Status)
+                {
+                    case ProjectStatus.Open: <span class="badge text-bg-warning">Open</span> break;
+                    case ProjectStatus.Completed: <span class="badge text-bg-success">Completed</span> break;
+                    default: <span class="badge text-bg-secondary">Cancelled</span> break;
+                }
+            </a>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<ProjectListDto>? _projects;
+    private bool _creating;
+    private ProjectEditModel _new = new();
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load() => _projects = await ProjectService.GetAllAsync();
+
+    private async Task Create()
+    {
+        var r = await ProjectService.CreateAsync(_new);
+        if (!r.Succeeded) { Toasts.Error(string.Join(" ", r.Errors)); return; }
+        Nav.NavigateTo($"/projects/{r.Value}");
+    }
+}
