@@ -1,0 +1,11 @@
+@* Renders a labelled value in a definition list, skipped entirely when empty. *@
+@if (!string.IsNullOrWhiteSpace(Value))
+{
+    <dt class="col-5 col-sm-4 text-secondary fw-normal small">@Label</dt>
+    <dd class="col-7 col-sm-8">@Value</dd>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string? Value { get; set; }
+}

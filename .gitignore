@@ -1,0 +1,29 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+
+# Runtime data (databases, attachments) — never commit
+**/data/
+*.db
+*.db-shm
+*.db-wal
+homestock-design.db
+
+# Docker volume mounts
+/deploy/data/
+/deploy/backups/
+
+# IDE
+.vs/
+.idea/
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

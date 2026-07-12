@@ -1,0 +1,33 @@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<button type="button" class="btn btn-outline-secondary btn-sm" title="Toggle theme" @onclick="Cycle">
+    <i class="bi @Icon"></i>
+</button>
+
+@code {
+    private string _theme = "auto";
+    private string Icon => _theme switch
+    {
+        "light" => "bi-sun-fill",
+        "dark" => "bi-moon-stars-fill",
+        _ => "bi-circle-half"
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _theme = await JS.InvokeAsync<string>("homestock.getTheme");
+            StateHasChanged();
+        }
+    }
+
+    private async Task Cycle()
+    {
+        _theme = _theme switch { "auto" => "light", "light" => "dark", _ => "auto" };
+        await JS.InvokeAsync<string>("homestock.setTheme", _theme);
+    }
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}

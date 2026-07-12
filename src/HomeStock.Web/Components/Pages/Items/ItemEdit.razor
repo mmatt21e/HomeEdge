@@ -1,0 +1,55 @@
+@page "/items/{Id:int}/edit"
+@attribute [Authorize(Policy = HomeStock.Domain.Enums.Roles.CanEditPolicy)]
+@rendermode InteractiveServer
+@inject IItemService ItemService
+@inject NavigationManager Nav
+@inject ToastService Toasts
+
+<PageTitle>Edit item · HomeStock</PageTitle>
+
+@if (_model is null)
+{
+    <LoadingIndicator />
+}
+else
+{
+    <div class="page-header"><h1>Edit item</h1></div>
+    <div class="panel">
+        <ItemForm Model="_model" ItemId="Id" SubmitLabel="Save changes" OnSubmit="Save" CancelHref="@($"/items/{Id}")" />
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private ItemEditModel? _model;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var item = await ItemService.GetAsync(Id);
+        if (item is null) { Nav.NavigateTo("/items"); return; }
+        _model = new ItemEditModel
+        {
+            Name = item.Name, Description = item.Description, Notes = item.Notes,
+            CategoryId = item.CategoryId, Subcategory = item.Subcategory, Quantity = item.Quantity,
+            Manufacturer = item.Manufacturer, Brand = item.Brand, ModelNumber = item.ModelNumber,
+            SerialNumber = item.SerialNumber, Barcode = item.Barcode, PurchaseDate = item.PurchaseDate,
+            PurchaseLocation = item.PurchaseLocation, PurchasePrice = item.PurchasePrice,
+            EstimatedValue = item.EstimatedValue, Condition = item.Condition,
+            WarrantyExpiration = item.WarrantyExpiration, LocationId = item.LocationId,
+            Container = item.Container, Status = item.Status, Tags = item.Tags.ToList()
+        };
+    }
+
+    private async Task Save()
+    {
+        var result = await ItemService.UpdateAsync(Id, _model!);
+        if (!result.Succeeded)
+        {
+            Toasts.Error(string.Join(" ", result.Errors));
+            return;
+        }
+        foreach (var w in result.Warnings) Toasts.Warning(w);
+        Toasts.Success("Changes saved.");
+        Nav.NavigateTo($"/items/{Id}");
+    }
+}

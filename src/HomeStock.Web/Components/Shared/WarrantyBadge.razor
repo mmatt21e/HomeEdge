@@ -1,0 +1,12 @@
+@using HomeStock.Web.Infrastructure
+@{
+    var (text, cls) = DisplayHelpers.WarrantyBadge(Expiry);
+}
+@if (!string.IsNullOrEmpty(text))
+{
+    <span class="badge text-bg-@cls" title="@Expiry?.ToString("yyyy-MM-dd")">@text</span>
+}
+
+@code {
+    [Parameter] public DateOnly? Expiry { get; set; }
+}

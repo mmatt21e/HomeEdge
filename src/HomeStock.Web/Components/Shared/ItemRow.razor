@@ -1,0 +1,24 @@
+@using HomeStock.Web.Infrastructure
+
+<a class="item-card touch-list-item" href="@($"/items/{Item.Id}")">
+    <div class="flex-grow-1 min-w-0">
+        <div class="item-title text-truncate">@Item.Name</div>
+        <div class="item-meta text-truncate">
+            @if (!string.IsNullOrEmpty(Item.CategoryName)) { <span><i class="bi bi-tag"></i> @Item.CategoryName</span> }
+            @if (!string.IsNullOrEmpty(Item.LocationName)) { <span class="ms-2"><i class="bi bi-geo-alt"></i> @Item.LocationName</span> }
+            @if (Item.Quantity != 1) { <span class="ms-2">×@Item.Quantity</span> }
+        </div>
+    </div>
+    <div class="text-end d-flex flex-column align-items-end gap-1">
+        <StatusBadge Status="Item.Status" />
+        @if (Item.EstimatedValue is decimal v)
+        {
+            <span class="small text-secondary">@v.ToString("C0")</span>
+        }
+        <WarrantyBadge Expiry="Item.WarrantyExpiration" />
+    </div>
+</a>
+
+@code {
+    [Parameter, EditorRequired] public ItemListDto Item { get; set; } = default!;
+}

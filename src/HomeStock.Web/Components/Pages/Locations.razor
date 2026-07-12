@@ -1,0 +1,178 @@
+@page "/locations"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using HomeStock.Web.Infrastructure
+@inject ILocationService LocationService
+@inject QrCodeService Qr
+@inject NavigationManager Nav
+@inject ToastService Toasts
+
+<PageTitle>Locations · HomeStock</PageTitle>
+
+<div class="page-header">
+    <h1>Locations</h1>
+    <AuthorizeView Policy="@Roles.CanEditPolicy">
+        <button class="btn btn-primary" @onclick="() => StartEdit(null, null)"><i class="bi bi-plus-lg"></i> New location</button>
+    </AuthorizeView>
+</div>
+
+@if (_editing is not null)
+{
+    <div class="panel mb-3">
+        <h3 class="h6">@(_editingId is null ? "New location" : "Edit location")</h3>
+        <EditForm Model="_editing" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label">Name <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="_editing.Name" />
+                    <ValidationMessage For="() => _editing.Name" class="field-error" />
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label">Parent</label>
+                    <InputSelect class="form-select" @bind-Value="_editing.ParentId">
+                        <option value="">— Top level —</option>
+                        @foreach (var n in (_tree ?? Enumerable.Empty<LocationTreeNode>()).Where(n => n.Location.Id != _editingId))
+                        {
+                            <option value="@n.Location.Id">@n.Path</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label">Description</label>
+                    <InputText class="form-control" @bind-Value="_editing.Description" />
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => _editing = null">Cancel</button>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@if (_tree is null)
+{
+    <LoadingIndicator />
+}
+else if (_tree.Count == 0)
+{
+    <EmptyState Icon="bi-geo-alt" Title="No locations yet"
+                Message="Build a hierarchy like Home › Garage › Cabinet › Drawer to organise your items." />
+}
+else
+{
+    <div class="panel">
+        @foreach (var node in _tree)
+        {
+            <div class="tree-row" style="padding-left:@(node.Depth * 1.25 + 0.25)rem;">
+                <i class="bi @(node.Location.DirectItemCount > 0 ? "bi-folder-fill" : "bi-folder") text-secondary"></i>
+                <a class="tree-name flex-grow-1 text-decoration-none text-body" href="@($"/items?location={node.Location.Id}")">
+                    @node.Location.Name
+                    @if (node.Location.IsArchived) { <span class="badge text-bg-dark ms-1">archived</span> }
+                    <span class="tree-code ms-2">@node.Location.Code</span>
+                </a>
+                <span class="text-secondary small me-2">@node.Location.DirectItemCount</span>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary" title="QR label" @onclick="() => ShowQr(node.Location)"><i class="bi bi-qr-code"></i></button>
+                    <AuthorizeView Policy="@Roles.CanEditPolicy">
+                        <button class="btn btn-outline-secondary" @onclick="() => StartEdit(node.Location, node.Location.ParentId)"><i class="bi bi-pencil"></i></button>
+                        @if (node.Location.IsArchived)
+                        {
+                            <button class="btn btn-outline-secondary" @onclick="() => Restore(node.Location)"><i class="bi bi-arrow-counterclockwise"></i></button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-outline-secondary" @onclick="() => Archive(node.Location)"><i class="bi bi-archive"></i></button>
+                        }
+                        <button class="btn btn-outline-danger" @onclick="() => Delete(node.Location)"><i class="bi bi-trash"></i></button>
+                    </AuthorizeView>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@if (_qrLocation is not null)
+{
+    <div class="app-modal-backdrop" @onclick="() => _qrLocation = null">
+        <div class="app-modal text-center" @onclick:stopPropagation="true">
+            <h5 class="app-modal-title">@_qrLocation.Name</h5>
+            <p class="text-secondary small">Code @_qrLocation.Code</p>
+            <img src="@_qrSvg" alt="QR code for @_qrLocation.Name" style="max-width:220px;width:100%;" />
+            <p class="small text-secondary mt-2">Scan to open this location's contents.</p>
+            <div class="app-modal-actions">
+                <a class="btn btn-outline-primary" href="@_qrSvg" download="@($"location-{_qrLocation.Code}.svg")"><i class="bi bi-download"></i> Download</a>
+                <button class="btn btn-primary" @onclick="() => _qrLocation = null">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    private IReadOnlyList<LocationTreeNode>? _tree;
+    private LocationEditModel? _editing;
+    private int? _editingId;
+    private LocationDto? _qrLocation;
+    private string? _qrSvg;
+    private ConfirmDialog _confirm = default!;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load() => _tree = await LocationService.GetTreeAsync(includeArchived: true);
+
+    private void StartEdit(LocationDto? l, int? parentId)
+    {
+        _editingId = l?.Id;
+        _editing = new LocationEditModel
+        {
+            Name = l?.Name ?? "",
+            Description = l?.Description,
+            ParentId = l is null ? parentId : l.ParentId
+        };
+    }
+
+    private async Task Save()
+    {
+        Result result = _editingId is null
+            ? await LocationService.CreateAsync(_editing!)
+            : await LocationService.UpdateAsync(_editingId.Value, _editing!);
+
+        // Parent changes on edit are applied via Move to run cycle validation.
+        if (result.Succeeded && _editingId is not null)
+            result = await LocationService.MoveAsync(_editingId.Value, _editing!.ParentId);
+
+        if (!result.Succeeded) { Toasts.Error(string.Join(" ", result.Errors)); return; }
+        Toasts.Success("Location saved.");
+        _editing = null;
+        await Load();
+    }
+
+    private void ShowQr(LocationDto l)
+    {
+        _qrLocation = l;
+        var url = $"{Nav.BaseUri.TrimEnd('/')}/items?location={l.Id}";
+        _qrSvg = Qr.SvgDataUri(url, 6);
+    }
+
+    private async Task Archive(LocationDto l)
+    {
+        var r = await LocationService.ArchiveAsync(l.Id);
+        if (r.Succeeded) { Toasts.Info("Location archived."); await Load(); } else Toasts.Error(string.Join(" ", r.Errors));
+    }
+
+    private async Task Restore(LocationDto l)
+    {
+        var r = await LocationService.RestoreAsync(l.Id);
+        if (r.Succeeded) { Toasts.Success("Location restored."); await Load(); } else Toasts.Error(string.Join(" ", r.Errors));
+    }
+
+    private async Task Delete(LocationDto l)
+    {
+        if (!await _confirm.ShowAsync("Delete location", $"Delete “{l.Name}”? Only allowed when it has no sub-locations or items.", "Delete")) return;
+        var r = await LocationService.DeleteAsync(l.Id);
+        if (r.Succeeded) { Toasts.Success("Location deleted."); await Load(); } else Toasts.Error(string.Join(" ", r.Errors));
+    }
+}

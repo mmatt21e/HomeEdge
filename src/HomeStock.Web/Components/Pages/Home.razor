@@ -1,0 +1,116 @@
+@page "/"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDashboardService Dashboard
+
+<PageTitle>Dashboard · HomeStock</PageTitle>
+
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <a class="btn btn-primary" href="/items/new"><i class="bi bi-plus-lg"></i> Add item</a>
+</div>
+
+@if (_data is null)
+{
+    <LoadingIndicator Text="Loading dashboard…" />
+}
+else
+{
+    <div class="stat-grid mb-4">
+        <div class="stat-tile">
+            <div class="d-flex justify-content-between"><span class="stat-value">@_data.TotalItemRecords</span><i class="bi bi-box-seam stat-icon"></i></div>
+            <div class="stat-label">Item records</div>
+        </div>
+        <div class="stat-tile">
+            <div class="d-flex justify-content-between"><span class="stat-value">@_data.TotalQuantity</span><i class="bi bi-stack stat-icon"></i></div>
+            <div class="stat-label">Total quantity</div>
+        </div>
+        <div class="stat-tile">
+            <div class="d-flex justify-content-between"><span class="stat-value">@_data.EstimatedTotalValue.ToString("C0")</span><i class="bi bi-cash-coin stat-icon"></i></div>
+            <div class="stat-label">Estimated value</div>
+        </div>
+        <a class="stat-tile text-decoration-none text-body" href="/items?warranty=ExpiringSoon">
+            <div class="d-flex justify-content-between"><span class="stat-value">@_data.WarrantiesExpiringSoonCount</span><i class="bi bi-shield-exclamation stat-icon"></i></div>
+            <div class="stat-label">Warranties expiring soon</div>
+        </a>
+        <a class="stat-tile text-decoration-none text-body" href="/items?loaned=true">
+            <div class="d-flex justify-content-between"><span class="stat-value">@_data.LoanedOutCount</span><i class="bi bi-arrow-left-right stat-icon"></i></div>
+            <div class="stat-label">Loaned out</div>
+        </a>
+        <a class="stat-tile text-decoration-none text-body" href="/items?missingPhoto=true">
+            <div class="d-flex justify-content-between"><span class="stat-value">@_data.MissingPhotoCount</span><i class="bi bi-camera stat-icon"></i></div>
+            <div class="stat-label">Missing photos</div>
+        </a>
+        <a class="stat-tile text-decoration-none text-body" href="/items?missingLocation=true">
+            <div class="d-flex justify-content-between"><span class="stat-value">@_data.WithoutLocationCount</span><i class="bi bi-geo stat-icon"></i></div>
+            <div class="stat-label">No location</div>
+        </a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="panel h-100">
+                <h3><i class="bi bi-clock-history"></i> Recently added</h3>
+                @if (_data.RecentlyAdded.Count == 0)
+                {
+                    <p class="text-secondary mb-0">No items yet. <a href="/items/new">Add your first item</a>.</p>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-2">@foreach (var i in _data.RecentlyAdded) { <ItemRow Item="i" /> }</div>
+                }
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="panel h-100">
+                <h3><i class="bi bi-pencil-square"></i> Recently updated</h3>
+                @if (_data.RecentlyUpdated.Count == 0)
+                {
+                    <p class="text-secondary mb-0">Nothing updated yet.</p>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-2">@foreach (var i in _data.RecentlyUpdated) { <ItemRow Item="i" /> }</div>
+                }
+            </div>
+        </div>
+
+        @if (_data.WarrantiesExpiringSoon.Count > 0)
+        {
+            <div class="col-12 col-lg-6">
+                <div class="panel h-100">
+                    <h3><i class="bi bi-shield-exclamation text-warning"></i> Warranties expiring soon</h3>
+                    <div class="d-flex flex-column gap-2">@foreach (var i in _data.WarrantiesExpiringSoon) { <ItemRow Item="i" /> }</div>
+                </div>
+            </div>
+        }
+        @if (_data.LoanedItems.Count > 0)
+        {
+            <div class="col-12 col-lg-6">
+                <div class="panel h-100">
+                    <h3><i class="bi bi-arrow-left-right"></i> Loaned out</h3>
+                    <div class="d-flex flex-column gap-2">@foreach (var i in _data.LoanedItems) { <ItemRow Item="i" /> }</div>
+                </div>
+            </div>
+        }
+
+        <div class="col-12 col-lg-6">
+            <div class="panel h-100">
+                <h3><i class="bi bi-tags"></i> By category</h3>
+                <BreakdownList Data="_data.CountByCategory" />
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="panel h-100">
+                <h3><i class="bi bi-geo-alt"></i> By location</h3>
+                <BreakdownList Data="_data.CountByLocation" />
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardDto? _data;
+
+    protected override async Task OnInitializedAsync() => _data = await Dashboard.GetAsync();
+}

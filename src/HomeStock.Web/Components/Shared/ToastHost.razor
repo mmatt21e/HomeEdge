@@ -1,0 +1,49 @@
+@implements IDisposable
+@inject ToastService Toasts
+
+<div class="toast-host" aria-live="polite" aria-atomic="true">
+    @foreach (var t in _messages)
+    {
+        <div class="app-toast toast-@t.Level.ToString().ToLower()" role="status" @key="t.Id">
+            <i class="bi @IconFor(t.Level)"></i>
+            <span class="app-toast-text">@t.Text</span>
+            <button type="button" class="app-toast-close" aria-label="Dismiss" @onclick="() => Remove(t.Id)">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<ToastMessage> _messages = new();
+
+    protected override void OnInitialized() => Toasts.OnShow += HandleShow;
+
+    private async void HandleShow(ToastMessage msg)
+    {
+        await InvokeAsync(() =>
+        {
+            _messages.Add(msg);
+            StateHasChanged();
+        });
+
+        await Task.Delay(msg.DurationMs);
+        await InvokeAsync(() => Remove(msg.Id));
+    }
+
+    private void Remove(Guid id)
+    {
+        var removed = _messages.RemoveAll(m => m.Id == id);
+        if (removed > 0) StateHasChanged();
+    }
+
+    private static string IconFor(ToastLevel level) => level switch
+    {
+        ToastLevel.Success => "bi-check-circle-fill",
+        ToastLevel.Warning => "bi-exclamation-triangle-fill",
+        ToastLevel.Error => "bi-x-octagon-fill",
+        _ => "bi-info-circle-fill"
+    };
+
+    public void Dispose() => Toasts.OnShow -= HandleShow;
+}

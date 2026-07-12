@@ -1,0 +1,87 @@
+@page "/settings"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using HomeStock.Application.Services
+@using HomeStock.Domain.Entities
+@inject ISettingsService SettingsService
+@inject ToastService Toasts
+
+<PageTitle>Settings · HomeStock</PageTitle>
+
+<div class="page-header"><h1>Settings</h1></div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-6">
+        <div class="panel">
+            <h3 class="h6">Instance</h3>
+            <AuthorizeView Policy="@Roles.AdminPolicy">
+                <Authorized>
+                    <div class="mb-3">
+                        <label class="form-label">Instance name</label>
+                        <input class="form-control" @bind="_instanceName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Currency (ISO code)</label>
+                        <input class="form-control" @bind="_currency" maxlength="3" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Warranty warning window (days)</label>
+                        <input class="form-control" type="number" @bind="_warrantyDays" />
+                    </div>
+                    <button class="btn btn-primary" @onclick="Save"><i class="bi bi-check-lg"></i> Save settings</button>
+                </Authorized>
+                <NotAuthorized>
+                    <dl class="row mb-0">
+                        <dt class="col-6 text-secondary fw-normal">Instance name</dt><dd class="col-6">@_instanceName</dd>
+                        <dt class="col-6 text-secondary fw-normal">Currency</dt><dd class="col-6">@_currency</dd>
+                        <dt class="col-6 text-secondary fw-normal">Warranty window</dt><dd class="col-6">@_warrantyDays days</dd>
+                    </dl>
+                    <p class="text-secondary small mt-2 mb-0">Only administrators can change instance settings.</p>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="panel">
+            <h3 class="h6">Your account</h3>
+            <AuthorizeView>
+                <p class="mb-2"><i class="bi bi-person-circle"></i> @context.User.Identity?.Name</p>
+                <p class="text-secondary small">Roles: @string.Join(", ", context.User.Claims.Where(c => c.Type.EndsWith("/role") || c.Type == "role").Select(c => c.Value).DefaultIfEmpty("—"))</p>
+            </AuthorizeView>
+            <div class="d-flex flex-column gap-2 align-items-start">
+                <a class="btn btn-outline-secondary" href="Account/Manage"><i class="bi bi-person-gear"></i> Manage profile</a>
+                <a class="btn btn-outline-secondary" href="Account/Manage/ChangePassword"><i class="bi bi-key"></i> Change password</a>
+                <a class="btn btn-outline-secondary" href="Account/Manage/TwoFactorAuthentication"><i class="bi bi-shield-lock"></i> Two-factor authentication</a>
+            </div>
+        </div>
+
+        <div class="panel mt-3">
+            <h3 class="h6">Appearance</h3>
+            <p class="text-secondary small mb-2">Switch between light, dark and system themes.</p>
+            <ThemeToggle />
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _instanceName = "HomeStock";
+    private string _currency = "USD";
+    private int _warrantyDays = 30;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var all = await SettingsService.GetAllAsync();
+        _instanceName = all.GetValueOrDefault(SettingKeys.InstanceName) ?? "HomeStock";
+        _currency = all.GetValueOrDefault(SettingKeys.Currency) ?? "USD";
+        _warrantyDays = int.TryParse(all.GetValueOrDefault(SettingKeys.WarrantyWarningDays), out var d) ? d : 30;
+    }
+
+    private async Task Save()
+    {
+        await SettingsService.SetAsync(SettingKeys.InstanceName, _instanceName);
+        await SettingsService.SetAsync(SettingKeys.Currency, _currency.ToUpperInvariant());
+        await SettingsService.SetAsync(SettingKeys.WarrantyWarningDays, _warrantyDays.ToString());
+        Toasts.Success("Settings saved.");
+    }
+}

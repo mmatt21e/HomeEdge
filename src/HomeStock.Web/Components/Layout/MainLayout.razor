@@ -1,0 +1,84 @@
+@using HomeStock.Web.Infrastructure
+@inherits LayoutComponentBase
+
+<div class="app-shell">
+    <aside class="app-sidebar">
+        <a class="app-brand" href="/">
+            <i class="bi bi-house-heart-fill"></i>
+            <span>HomeStock</span>
+        </a>
+        <nav>
+            <ul class="nav-links">
+                @foreach (var item in NavItems.All)
+                {
+                    <li>
+                        <NavLink href="@("/" + item.Href)" class="touch-list-item"
+                                 Match="@(item.Match ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+                            <i class="bi @item.Icon"></i>
+                            <span>@item.Label</span>
+                        </NavLink>
+                    </li>
+                }
+            </ul>
+        </nav>
+        <div class="mt-auto p-3 small text-secondary">
+            <AuthorizeView>
+                <Authorized>
+                    <i class="bi bi-person-circle"></i> @context.User.Identity?.Name
+                </Authorized>
+            </AuthorizeView>
+        </div>
+    </aside>
+
+    <div class="app-main">
+        <header class="app-topbar">
+            <a class="app-brand hide-desktop" href="/" style="padding:0 .25rem;">
+                <i class="bi bi-house-heart-fill"></i>
+            </a>
+            @* Plain GET form so search works under both static and interactive rendering. *@
+            <form class="app-search" action="/items" method="get" role="search">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search"></i></span>
+                    <input class="form-control border-start-0" type="search" name="search"
+                           placeholder="Search inventory…" aria-label="Search inventory" />
+                </div>
+            </form>
+            <ThemeToggle />
+            <AuthorizeView>
+                <Authorized>
+                    <a class="btn btn-outline-secondary btn-sm hide-mobile" href="Account/Manage" title="Account"><i class="bi bi-person"></i></a>
+                    <form action="Account/Logout" method="post" class="d-inline">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="ReturnUrl" value="/" />
+                        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Log out"><i class="bi bi-box-arrow-right"></i></button>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="btn btn-primary btn-sm" href="Account/Login">Sign in</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </header>
+
+        <main class="app-content">
+            @Body
+        </main>
+    </div>
+</div>
+
+<nav class="app-bottom-nav hide-desktop">
+    @foreach (var item in NavItems.All.Where(i => i.InBottomNav))
+    {
+        <NavLink href="@("/" + item.Href)" Match="@(item.Match ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+            <i class="bi @item.Icon"></i>
+            <span>@item.Label</span>
+        </NavLink>
+    }
+</nav>
+
+<ToastHost />
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

@@ -1,0 +1,10 @@
+@page "/scan"
+@attribute [Authorize]
+
+<PageTitle>Scan · HomeStock</PageTitle>
+
+<div class="page-header"><h1>Scan</h1></div>
+<EmptyState Icon="bi-upc-scan" Title="Camera scanning arrives in Phase 2"
+            Message="Barcode and QR scanning (open a matching item, create a new one, or attach a code) is scheduled for the next phase. In the meantime you can search by barcode from the Items page.">
+    <Action><a class="btn btn-primary" href="/items"><i class="bi bi-box-seam"></i> Go to items</a></Action>
+</EmptyState>

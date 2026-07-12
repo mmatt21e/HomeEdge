@@ -1,0 +1,6 @@
+@using HomeStock.Web.Infrastructure
+<span class="badge text-bg-@DisplayHelpers.StatusClass(Status)">@DisplayHelpers.Label(Status)</span>
+
+@code {
+    [Parameter] public ItemStatus Status { get; set; }
+}

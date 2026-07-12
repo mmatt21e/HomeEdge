@@ -1,0 +1,40 @@
+@page "/items/new"
+@attribute [Authorize(Policy = HomeStock.Domain.Enums.Roles.CanEditPolicy)]
+@rendermode InteractiveServer
+@inject IItemService ItemService
+@inject NavigationManager Nav
+@inject ToastService Toasts
+
+<PageTitle>Add item · HomeStock</PageTitle>
+
+<div class="page-header"><h1>Add item</h1></div>
+
+<div class="panel">
+    <ItemForm Model="_model" SubmitLabel="Create item" OnSubmit="Save" />
+</div>
+
+@code {
+    private readonly ItemEditModel _model = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Focus the name field for fast entry.
+            await Task.Yield();
+        }
+    }
+
+    private async Task Save()
+    {
+        var result = await ItemService.CreateAsync(_model);
+        if (!result.Succeeded)
+        {
+            Toasts.Error(string.Join(" ", result.Errors));
+            return;
+        }
+        foreach (var w in result.Warnings) Toasts.Warning(w);
+        Toasts.Success($"“{_model.Name}” added.");
+        Nav.NavigateTo($"/items/{result.Value}");
+    }
+}

@@ -1,0 +1,173 @@
+/* ============================================================
+   HomeStock application styles — mobile-first, theme-aware.
+   Builds on Bootstrap 5.3 (data-bs-theme drives light/dark).
+   ============================================================ */
+
+:root {
+    --hs-brand: #0d9488;
+    --hs-brand-strong: #0f766e;
+    --hs-brand-contrast: #ffffff;
+    --hs-nav-width: 240px;
+    --hs-bottom-nav-h: 60px;
+    --hs-topbar-h: 56px;
+}
+
+html, body { height: 100%; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+a { color: var(--hs-brand); }
+.btn-primary { --bs-btn-bg: var(--hs-brand); --bs-btn-border-color: var(--hs-brand);
+    --bs-btn-hover-bg: var(--hs-brand-strong); --bs-btn-hover-border-color: var(--hs-brand-strong);
+    --bs-btn-active-bg: var(--hs-brand-strong); --bs-btn-active-border-color: var(--hs-brand-strong); }
+.text-brand { color: var(--hs-brand) !important; }
+
+/* ---------- App shell layout ---------- */
+.app-shell { display: flex; min-height: 100vh; }
+
+.app-sidebar {
+    width: var(--hs-nav-width);
+    flex: 0 0 var(--hs-nav-width);
+    background: var(--bs-body-bg);
+    border-right: 1px solid var(--bs-border-color);
+    position: sticky; top: 0; height: 100vh;
+    display: none; flex-direction: column;
+}
+
+.app-brand {
+    display: flex; align-items: center; gap: .55rem;
+    font-weight: 700; font-size: 1.15rem; padding: 1rem 1.1rem;
+    color: var(--hs-brand); text-decoration: none;
+}
+.app-brand i { font-size: 1.4rem; }
+
+.app-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+
+.app-topbar {
+    height: var(--hs-topbar-h);
+    display: flex; align-items: center; gap: .5rem;
+    padding: 0 .75rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    position: sticky; top: 0; z-index: 20;
+    background: var(--bs-body-bg);
+}
+.app-topbar .app-search { flex: 1 1 auto; max-width: 640px; }
+.app-topbar .app-search .form-control { border-radius: 999px; }
+
+.app-content { padding: 1rem; padding-bottom: calc(var(--hs-bottom-nav-h) + 1rem); flex: 1 1 auto; }
+
+/* ---------- Sidebar nav links ---------- */
+.nav-links { list-style: none; margin: 0; padding: .5rem; display: flex; flex-direction: column; gap: .15rem; }
+.nav-links a {
+    display: flex; align-items: center; gap: .7rem;
+    padding: .65rem .8rem; border-radius: .55rem;
+    color: var(--bs-body-color); text-decoration: none; font-weight: 500;
+}
+.nav-links a i { font-size: 1.15rem; width: 1.3rem; text-align: center; }
+.nav-links a:hover { background: var(--bs-tertiary-bg); }
+.nav-links a.active { background: color-mix(in srgb, var(--hs-brand) 16%, transparent); color: var(--hs-brand); }
+
+/* ---------- Bottom nav (mobile) ---------- */
+.app-bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; height: var(--hs-bottom-nav-h);
+    display: flex; z-index: 30;
+    background: var(--bs-body-bg); border-top: 1px solid var(--bs-border-color);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+.app-bottom-nav a {
+    flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; color: var(--bs-secondary-color); text-decoration: none; font-size: .68rem;
+}
+.app-bottom-nav a i { font-size: 1.25rem; }
+.app-bottom-nav a.active { color: var(--hs-brand); }
+
+/* ---------- Desktop breakpoint ---------- */
+@media (min-width: 992px) {
+    .app-sidebar { display: flex; }
+    .app-bottom-nav { display: none; }
+    .app-content { padding: 1.5rem; padding-bottom: 1.5rem; }
+    .hide-desktop { display: none !important; }
+}
+@media (max-width: 991.98px) {
+    .hide-mobile { display: none !important; }
+}
+
+/* ---------- Cards / stat tiles ---------- */
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.page-header h1 { font-size: 1.5rem; margin: 0; }
+
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .8rem; }
+.stat-tile { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .75rem; padding: 1rem; }
+.stat-tile .stat-value { font-size: 1.7rem; font-weight: 700; line-height: 1.1; }
+.stat-tile .stat-label { color: var(--bs-secondary-color); font-size: .82rem; margin-top: .25rem; }
+.stat-tile .stat-icon { font-size: 1.3rem; color: var(--hs-brand); }
+
+.panel { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .75rem; padding: 1rem 1.1rem; }
+.panel h2, .panel h3 { font-size: 1.05rem; margin-bottom: .75rem; }
+
+/* ---------- Item cards (mobile list) ---------- */
+.item-card { display: flex; gap: .8rem; align-items: flex-start; padding: .8rem; border: 1px solid var(--bs-border-color);
+    border-radius: .7rem; background: var(--bs-body-bg); text-decoration: none; color: inherit; }
+.item-card:hover { border-color: var(--hs-brand); }
+.item-card .item-title { font-weight: 600; }
+.item-card .item-meta { color: var(--bs-secondary-color); font-size: .82rem; }
+
+/* Large touch targets */
+.btn { min-height: 42px; }
+.form-control, .form-select { min-height: 44px; }
+.touch-list-item { min-height: 48px; }
+
+/* ---------- Location tree ---------- */
+.tree-row { display: flex; align-items: center; gap: .5rem; padding: .5rem .25rem; border-bottom: 1px solid var(--bs-border-color); }
+.tree-name { font-weight: 500; }
+.tree-code { font-family: var(--bs-font-monospace); font-size: .75rem; color: var(--bs-secondary-color); }
+
+/* ---------- Toasts ---------- */
+.toast-host { position: fixed; bottom: calc(var(--hs-bottom-nav-h) + 12px); right: 12px; left: 12px;
+    display: flex; flex-direction: column; gap: .5rem; z-index: 1080; pointer-events: none; }
+@media (min-width: 992px) { .toast-host { left: auto; bottom: 16px; width: 360px; } }
+.app-toast { pointer-events: auto; display: flex; align-items: center; gap: .6rem; padding: .75rem .9rem;
+    border-radius: .6rem; color: #fff; box-shadow: 0 6px 20px rgba(0,0,0,.25); font-size: .9rem; }
+.app-toast-text { flex: 1 1 auto; }
+.app-toast-close { background: transparent; border: 0; color: inherit; opacity: .85; }
+.toast-success { background: #16a34a; }
+.toast-info { background: #0284c7; }
+.toast-warning { background: #d97706; }
+.toast-error { background: #dc2626; }
+
+/* ---------- Modal ---------- */
+.app-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1090;
+    display: grid; place-items: center; padding: 1rem; }
+.app-modal { background: var(--bs-body-bg); border-radius: .8rem; padding: 1.25rem; max-width: 26rem; width: 100%;
+    border: 1px solid var(--bs-border-color); box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+.app-modal-title { margin: 0 0 .5rem; }
+.app-modal-body { color: var(--bs-secondary-color); }
+.app-modal-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1.25rem; }
+
+/* ---------- Empty / loading ---------- */
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--bs-secondary-color); }
+.empty-state-icon { font-size: 2.6rem; color: var(--hs-brand); opacity: .7; }
+.empty-state-title { font-size: 1.15rem; margin: .75rem 0 .25rem; color: var(--bs-body-color); }
+.loading-indicator { display: flex; align-items: center; gap: .6rem; padding: 1.5rem; color: var(--bs-secondary-color); }
+.loading-indicator .spinner-border { width: 1.4rem; height: 1.4rem; }
+
+/* ---------- Forms ---------- */
+.form-section { margin-bottom: 1.5rem; }
+.form-section > h3 { font-size: 1rem; color: var(--bs-secondary-color); text-transform: uppercase; letter-spacing: .03em;
+    border-bottom: 1px solid var(--bs-border-color); padding-bottom: .4rem; margin-bottom: 1rem; }
+.field-error { color: var(--bs-danger); font-size: .82rem; margin-top: .2rem; }
+.tag-chip { display: inline-flex; align-items: center; gap: .35rem; background: var(--bs-tertiary-bg);
+    border-radius: 999px; padding: .2rem .6rem; font-size: .82rem; margin: .15rem; }
+.tag-chip button { border: 0; background: transparent; line-height: 1; color: var(--bs-secondary-color); }
+
+/* Chips / filters */
+.filter-bar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: 1rem; }
+
+/* Auth pages centering */
+.auth-wrapper { max-width: 26rem; margin: 2rem auto; }
+
+/* Validation summary from the Identity scaffolding */
+.validation-message, .text-danger { color: var(--bs-danger); }
+
+/* Utility */
+.clickable { cursor: pointer; }
+.text-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

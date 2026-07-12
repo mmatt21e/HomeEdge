@@ -1,0 +1,29 @@
+@* Simple horizontal bar breakdown of counts by name (category/location). *@
+@if (Data.Count == 0)
+{
+    <p class="text-secondary mb-0">No data yet.</p>
+}
+else
+{
+    <div class="d-flex flex-column gap-2">
+        @foreach (var row in Data)
+        {
+            var pct = _max == 0 ? 0 : (int)Math.Round(row.Count * 100.0 / _max);
+            <div>
+                <div class="d-flex justify-content-between small">
+                    <span class="text-truncate">@row.Name</span>
+                    <span class="text-secondary">@row.Count</span>
+                </div>
+                <div class="progress" style="height:6px;" role="progressbar" aria-valuenow="@row.Count" aria-valuemin="0" aria-valuemax="@_max">
+                    <div class="progress-bar" style="width:@(pct)%; background-color: var(--hs-brand);"></div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<CountByName> Data { get; set; } = Array.Empty<CountByName>();
+    private int _max;
+    protected override void OnParametersSet() => _max = Data.Count == 0 ? 0 : Data.Max(d => d.Count);
+}

@@ -1,0 +1,163 @@
+@inject ICategoryService CategoryService
+@inject ILocationService LocationService
+@inject IItemService ItemService
+
+<EditForm Model="Model" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+
+    @if (_warnings.Count > 0)
+    {
+        <div class="alert alert-warning">
+            <strong><i class="bi bi-exclamation-triangle"></i> Possible duplicates</strong>
+            <ul class="mb-0">@foreach (var w in _warnings) { <li>@w</li> }</ul>
+        </div>
+    }
+
+    <div class="form-section">
+        <h3>Basics</h3>
+        <div class="mb-3">
+            <label class="form-label">Name <span class="text-danger">*</span></label>
+            <InputText id="item-name" class="form-control" @bind-Value="Model.Name" placeholder="e.g. Cordless drill" />
+            <ValidationMessage For="() => Model.Name" class="field-error" />
+        </div>
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <label class="form-label">Category</label>
+                <InputSelect class="form-select" @bind-Value="Model.CategoryId">
+                    <option value="">— None —</option>
+                    @foreach (var c in _categories) { <option value="@c.Id">@c.Name</option> }
+                </InputSelect>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label">Subcategory</label>
+                <InputText class="form-control" @bind-Value="Model.Subcategory" />
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label">Quantity</label>
+                <InputNumber class="form-control" @bind-Value="Model.Quantity" />
+                <ValidationMessage For="() => Model.Quantity" class="field-error" />
+            </div>
+        </div>
+        <div class="mt-3">
+            <label class="form-label">Description</label>
+            <InputTextArea class="form-control" rows="2" @bind-Value="Model.Description" />
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h3>Product identifiers</h3>
+        <div class="row g-3">
+            <div class="col-6 col-md-4"><label class="form-label">Manufacturer</label><InputText class="form-control" @bind-Value="Model.Manufacturer" /></div>
+            <div class="col-6 col-md-4"><label class="form-label">Brand</label><InputText class="form-control" @bind-Value="Model.Brand" /></div>
+            <div class="col-6 col-md-4"><label class="form-label">Model number</label><InputText class="form-control" @bind-Value="Model.ModelNumber" /></div>
+            <div class="col-6 col-md-4">
+                <label class="form-label">Serial number</label>
+                <InputText class="form-control" @bind-Value="Model.SerialNumber" @onblur="CheckDuplicates" />
+            </div>
+            <div class="col-6 col-md-4">
+                <label class="form-label">Barcode / UPC</label>
+                <InputText class="form-control" @bind-Value="Model.Barcode" @onblur="CheckDuplicates" />
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h3>Purchase &amp; value</h3>
+        <div class="row g-3">
+            <div class="col-6 col-md-3"><label class="form-label">Purchase date</label><InputDate class="form-control" @bind-Value="Model.PurchaseDate" /></div>
+            <div class="col-6 col-md-3"><label class="form-label">Purchased at</label><InputText class="form-control" @bind-Value="Model.PurchaseLocation" /></div>
+            <div class="col-6 col-md-3"><label class="form-label">Purchase price</label><InputNumber class="form-control" @bind-Value="Model.PurchasePrice" /></div>
+            <div class="col-6 col-md-3"><label class="form-label">Estimated value</label><InputNumber class="form-control" @bind-Value="Model.EstimatedValue" /></div>
+            <div class="col-6 col-md-3">
+                <label class="form-label">Condition</label>
+                <InputSelect class="form-select" @bind-Value="Model.Condition">
+                    @foreach (var c in Enum.GetValues<ItemCondition>()) { <option value="@c">@Infrastructure.DisplayHelpers.Label(c)</option> }
+                </InputSelect>
+            </div>
+            <div class="col-6 col-md-3"><label class="form-label">Warranty expires</label><InputDate class="form-control" @bind-Value="Model.WarrantyExpiration" /></div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h3>Location &amp; status</h3>
+        <div class="row g-3">
+            <div class="col-12 col-md-5">
+                <label class="form-label">Location</label>
+                <InputSelect class="form-select" @bind-Value="Model.LocationId">
+                    <option value="">— Unassigned —</option>
+                    @foreach (var l in _locations) { <option value="@l.Location.Id">@l.Path</option> }
+                </InputSelect>
+            </div>
+            <div class="col-6 col-md-4"><label class="form-label">Container / bin</label><InputText class="form-control" @bind-Value="Model.Container" /></div>
+            <div class="col-6 col-md-3">
+                <label class="form-label">Status</label>
+                <InputSelect class="form-select" @bind-Value="Model.Status">
+                    @foreach (var s in Enum.GetValues<ItemStatus>()) { <option value="@s">@Infrastructure.DisplayHelpers.Label(s)</option> }
+                </InputSelect>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h3>Tags &amp; notes</h3>
+        <div class="mb-2">
+            @foreach (var tag in Model.Tags)
+            {
+                <span class="tag-chip">@tag <button type="button" @onclick="() => Model.Tags.Remove(tag)"><i class="bi bi-x"></i></button></span>
+            }
+        </div>
+        <div class="input-group mb-3" style="max-width: 360px;">
+            <input class="form-control" placeholder="Add a tag…" @bind="_newTag" @bind:event="oninput"
+                   @onkeydown="@(e => { if (e.Key == "Enter") AddTag(); })" />
+            <button type="button" class="btn btn-outline-secondary" @onclick="AddTag">Add</button>
+        </div>
+        <label class="form-label">Notes</label>
+        <InputTextArea class="form-control" rows="3" @bind-Value="Model.Notes" />
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary" disabled="@_saving">
+            @if (_saving) { <span class="spinner-border spinner-border-sm"></span> }
+            <i class="bi bi-check-lg"></i> @SubmitLabel
+        </button>
+        <a class="btn btn-outline-secondary" href="@CancelHref">Cancel</a>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter, EditorRequired] public ItemEditModel Model { get; set; } = default!;
+    [Parameter] public int? ItemId { get; set; }
+    [Parameter] public string SubmitLabel { get; set; } = "Save";
+    [Parameter] public string CancelHref { get; set; } = "/items";
+    [Parameter] public EventCallback OnSubmit { get; set; }
+
+    private IReadOnlyList<CategoryDto> _categories = Array.Empty<CategoryDto>();
+    private IReadOnlyList<LocationTreeNode> _locations = Array.Empty<LocationTreeNode>();
+    private List<string> _warnings = new();
+    private string _newTag = string.Empty;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categories = await CategoryService.GetAllAsync();
+        _locations = await LocationService.GetTreeAsync();
+    }
+
+    private void AddTag()
+    {
+        var t = _newTag.Trim();
+        if (t.Length > 0 && !Model.Tags.Any(x => string.Equals(x, t, StringComparison.OrdinalIgnoreCase)))
+            Model.Tags.Add(t);
+        _newTag = string.Empty;
+    }
+
+    private async Task CheckDuplicates()
+        => _warnings = (await ItemService.CheckDuplicatesAsync(Model.SerialNumber, Model.Barcode, ItemId, default)).ToList();
+
+    private async Task HandleSubmit()
+    {
+        _saving = true;
+        try { await OnSubmit.InvokeAsync(); }
+        finally { _saving = false; }
+    }
+}
