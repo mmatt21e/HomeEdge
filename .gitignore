@@ -27,3 +27,15 @@ Thumbs.db
 
 # Logs
 *.log
+
+# AI assistant tooling files
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.codex/
+codex.md
+AGENTS.md
+.aider*
+.cursor/
+.cursorrules
+.github/copilot-instructions.md

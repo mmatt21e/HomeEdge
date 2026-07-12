@@ -5,7 +5,7 @@ namespace HomeStock.Application.Abstractions;
 
 /// <summary>
 /// Extracts candidate inventory items from a photo using an external (or local) vision model.
-/// Kept as an abstraction so the provider (Claude, OpenAI, Gemini, Groq, OpenRouter, Ollama, …)
+/// Kept as an abstraction so the provider (OpenAI, Gemini, Groq, OpenRouter, Ollama, …)
 /// is a configuration concern, not a code change. The default implementation targets any
 /// OpenAI-compatible chat/completions endpoint.
 /// </summary>
