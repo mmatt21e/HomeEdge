@@ -5,12 +5,13 @@ your household — from any phone, tablet, or computer on your local network. Ru
 machine, keeps your data on your own disk, and is built so you can add secure remote access
 later without rewriting anything.
 
-> **Status:** Phases 1–2 complete. Phase 1 delivered the foundations (auth, database, items,
-> categories, locations, responsive UI, Docker). **Phase 2** adds photo/document uploads,
+> **Status:** Phases 1–3 complete. Phase 1 delivered the foundations (auth, database, items,
+> categories, locations, responsive UI, Docker); **Phase 2** added photo/document uploads,
 > phone-camera barcode/QR scanning, CSV/JSON export, a guided CSV import wizard, and
-> **downloadable installers/upgraders** with an automated release pipeline. Phases 3–4 (lending,
-> audits, reports, PWA/remote hardening) are planned — see
-> [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+> **downloadable installers/upgraders** with an automated release pipeline; **Phase 3** adds
+> lending, location audits with discrepancy reports, printable inventory/insurance reports,
+> backup & restore, and a change-activity feed. Phase 4 (PWA/reverse-proxy/MFA hardening,
+> security review) is planned — see [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ---
 
@@ -116,10 +117,10 @@ In **Development** the seed creates:
 dotnet test HomeStock.slnx
 ```
 
-32 unit tests cover the category, location, item, dashboard, attachment, and import/export
-business logic (duplicate detection, history recording, move-cycle prevention, search/filtering,
-aggregation, file storage, CSV mapping/validation/commit) against a real in-memory SQLite
-database.
+43 unit tests cover the category, location, item, dashboard, attachment, import/export, lending,
+audit, and backup/restore business logic (duplicate detection, history recording, move-cycle
+prevention, search/filtering, aggregation, file storage, CSV mapping/validation/commit, loan
+lifecycle, audit outcomes, additive restore) against a real in-memory SQLite database.
 
 ---
 
@@ -162,8 +163,19 @@ own set — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#databases-and-migr
   desktop, **dark/light/system themes**, toasts, confirmations, empty states, loading
   indicators, and an installable PWA shell.
 
-The **Audits** section is present in the navigation and clearly signposted as arriving in a later
-phase (not a dead button).
+## Features (Phase 3)
+
+- **Lending** — loan items out (borrower, contact, dates, notes), record returns, and keep a full
+  lending history per item; status flips to *Loaned* while out; overdue loans are flagged.
+- **Inventory audits** — start an audit for a location (optionally including sub-locations),
+  work through the expected items marking each **Confirmed / Missing / Moved / Damaged** (scan a
+  barcode to confirm quickly), then complete to apply outcomes to the items and produce a
+  **discrepancy report**. Full audit history is kept.
+- **Printable reports** — inventory and insurance reports, filtered by category/location, print or
+  save-as-PDF, with record/quantity/value totals.
+- **Backup & restore** — full JSON backup plus a validated, **non-destructive** restore that
+  rebuilds categories, the location hierarchy, tags and items (skipping ones already present).
+- **Activity feed** — review the latest changes across all items at `/activity`.
 
 ## Features (Phase 2)
 
@@ -190,6 +202,7 @@ phase (not a dead button).
 | [Implementation plan](docs/IMPLEMENTATION_PLAN.md) | Phased roadmap and data model |
 | [Phase 1 checklist](docs/PHASE1_CHECKLIST.md) | What was delivered in Phase 1 |
 | [Phase 2 checklist](docs/PHASE2_CHECKLIST.md) | What was delivered in Phase 2 |
+| [Phase 3 checklist](docs/PHASE3_CHECKLIST.md) | What was delivered in Phase 3 |
 | [Releases & installers](docs/RELEASES.md) | Downloadable installers, upgrades, cutting releases |
 | [Architecture](docs/ARCHITECTURE.md) | Layers, DI, data model, migrations |
 | [Local network deployment](docs/LOCAL_NETWORK_DEPLOYMENT.md) | Docker, IP/hostname access |

@@ -4,7 +4,7 @@
     release time with: dotnet build /p:Version=1.2.3
   -->
   <PropertyGroup>
-    <Version Condition="'$(Version)' == ''">0.2.0</Version>
+    <Version Condition="'$(Version)' == ''">0.3.0</Version>
     <Product>HomeStock</Product>
     <Company>HomeStock</Company>
     <Authors>HomeStock</Authors>

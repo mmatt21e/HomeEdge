@@ -2,6 +2,10 @@
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject IImportExportService ImportExport
+@inject IBackupRestoreService BackupRestore
+@inject ICategoryService CategoryService
+@inject ILocationService LocationService
+@inject NavigationManager Nav
 @inject ToastService Toasts
 
 <PageTitle>Reports &amp; data · HomeStock</PageTitle>
@@ -27,9 +31,41 @@
                     </a>
                 </AuthorizeView>
             </div>
-            <p class="text-secondary small mt-3 mb-0">Printable insurance reports and location/category-filtered
-                report sheets are expanding in Phase 3; the CSV export already produces an
-                insurance-ready record today.</p>
+        </div>
+
+        <div class="panel mt-3">
+            <h3 class="h6"><i class="bi bi-printer"></i> Printable reports</h3>
+            <p class="text-secondary small">Generate a print/PDF-ready inventory or insurance report, optionally filtered by category or location.</p>
+            <div class="row g-2">
+                <div class="col-12 col-sm-6">
+                    <label class="form-label small mb-1">Category</label>
+                    <select class="form-select form-select-sm" @bind="_reportCategoryId">
+                        <option value="0">All categories</option>
+                        @foreach (var c in _categories) { <option value="@c.Id">@c.Name</option> }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6">
+                    <label class="form-label small mb-1">Location</label>
+                    <select class="form-select form-select-sm" @bind="_reportLocationId">
+                        <option value="0">All locations</option>
+                        @foreach (var n in _locations) { <option value="@n.Location.Id">@n.Path</option> }
+                    </select>
+                </div>
+                <div class="col-12">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="rptSub" @bind="_reportIncludeSub" />
+                        <label class="form-check-label small" for="rptSub">Include sub-locations</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="rptArch" @bind="_reportIncludeArchived" />
+                        <label class="form-check-label small" for="rptArch">Include archived</label>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-2">
+                <button class="btn btn-outline-primary btn-sm" @onclick="@(() => OpenReport("inventory"))"><i class="bi bi-list-ul"></i> Inventory report</button>
+                <button class="btn btn-outline-primary btn-sm" @onclick="@(() => OpenReport("insurance"))"><i class="bi bi-shield-check"></i> Insurance report</button>
+            </div>
         </div>
     </div>
 
@@ -153,6 +189,40 @@
                 <div class="panel"><p class="text-secondary mb-0">Importing requires an editor or administrator role.</p></div>
             </NotAuthorized>
         </AuthorizeView>
+
+        <AuthorizeView Policy="@Roles.AdminPolicy">
+            <div class="panel mt-3">
+                <h3 class="h6"><i class="bi bi-arrow-counterclockwise"></i> Restore from JSON backup</h3>
+                <p class="text-secondary small">Upload a HomeStock JSON backup. Restore is <strong>additive</strong>:
+                    missing categories, locations, tags and items are added; existing items are left untouched.</p>
+
+                @if (_restoreResult is not null)
+                {
+                    <div class="alert alert-success">
+                        Restored: +@_restoreResult.CategoriesAdded categories, +@_restoreResult.LocationsAdded locations,
+                        +@_restoreResult.ItemsAdded items (@_restoreResult.ItemsSkipped already present).
+                    </div>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="ResetRestore">Restore another file</button>
+                }
+                else if (_backupSummary is not null)
+                {
+                    <ul class="small">
+                        <li>@_backupSummary.ItemCount items, @_backupSummary.CategoryCount categories, @_backupSummary.LocationCount locations</li>
+                        @foreach (var w in _backupSummary.Warnings) { <li class="text-warning">@w</li> }
+                    </ul>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary btn-sm" @onclick="DoRestore" disabled="@_busyRestore">
+                            @if (_busyRestore) { <span class="spinner-border spinner-border-sm"></span> } Restore now
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="ResetRestore">Cancel</button>
+                    </div>
+                }
+                else
+                {
+                    <InputFile class="form-control form-control-sm" accept=".json,application/json" OnChange="OnBackupSelected" disabled="@_busyRestore" />
+                }
+            </div>
+        </AuthorizeView>
     </div>
 </div>
 
@@ -167,7 +237,67 @@
     private bool _skipDuplicates = true;
     private ImportCommitResult? _commit;
 
+    // Printable reports
+    private IReadOnlyList<CategoryDto> _categories = Array.Empty<CategoryDto>();
+    private IReadOnlyList<LocationTreeNode> _locations = Array.Empty<LocationTreeNode>();
+    private int _reportCategoryId, _reportLocationId;
+    private bool _reportIncludeSub = true, _reportIncludeArchived;
+
+    // Restore
+    private byte[]? _backupBytes;
+    private BackupSummary? _backupSummary;
+    private RestoreResult? _restoreResult;
+    private bool _busyRestore;
+
     private const long MaxCsvBytes = 15 * 1024 * 1024;
+    private const long MaxJsonBytes = 50 * 1024 * 1024;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categories = await CategoryService.GetAllAsync();
+        _locations = await LocationService.GetTreeAsync();
+    }
+
+    private void OpenReport(string mode)
+    {
+        var q = new List<string> { $"mode={mode}", $"sub={_reportIncludeSub.ToString().ToLower()}", $"archived={_reportIncludeArchived.ToString().ToLower()}" };
+        if (_reportCategoryId > 0) q.Add($"category={_reportCategoryId}");
+        if (_reportLocationId > 0) q.Add($"location={_reportLocationId}");
+        Nav.NavigateTo($"/reports/print?{string.Join("&", q)}");
+    }
+
+    private async Task OnBackupSelected(InputFileChangeEventArgs e)
+    {
+        _busyRestore = true;
+        try
+        {
+            using var ms = new MemoryStream();
+            await using (var s = e.File.OpenReadStream(MaxJsonBytes)) await s.CopyToAsync(ms);
+            _backupBytes = ms.ToArray();
+            var result = await BackupRestore.ValidateAsync(new MemoryStream(_backupBytes));
+            if (!result.Succeeded) { Toasts.Error(string.Join(" ", result.Errors)); _backupBytes = null; return; }
+            _backupSummary = result.Value;
+        }
+        catch (IOException) { Toasts.Error("Backup file is too large."); }
+        finally { _busyRestore = false; }
+    }
+
+    private async Task DoRestore()
+    {
+        if (_backupBytes is null) return;
+        _busyRestore = true;
+        try
+        {
+            var result = await BackupRestore.RestoreAsync(new MemoryStream(_backupBytes));
+            if (!result.Succeeded) { Toasts.Error(string.Join(" ", result.Errors)); return; }
+            _restoreResult = result.Value;
+            _backupSummary = null;
+            Toasts.Success($"Restore complete: +{_restoreResult!.ItemsAdded} items.");
+        }
+        finally { _busyRestore = false; }
+    }
+
+    private void ResetRestore() { _backupBytes = null; _backupSummary = null; _restoreResult = null; }
 
     private async Task OnFileSelected(InputFileChangeEventArgs e)
     {

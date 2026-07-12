@@ -54,6 +54,7 @@
                 <a class="btn btn-outline-secondary" href="Account/Manage"><i class="bi bi-person-gear"></i> Manage profile</a>
                 <a class="btn btn-outline-secondary" href="Account/Manage/ChangePassword"><i class="bi bi-key"></i> Change password</a>
                 <a class="btn btn-outline-secondary" href="Account/Manage/TwoFactorAuthentication"><i class="bi bi-shield-lock"></i> Two-factor authentication</a>
+                <a class="btn btn-outline-secondary" href="/activity"><i class="bi bi-clock-history"></i> Recent activity</a>
             </div>
         </div>
 
@@ -73,7 +74,7 @@
         System.Reflection.Assembly.GetExecutingAssembly()
             .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
-            .FirstOrDefault()?.InformationalVersion.Split('+')[0] ?? "0.2.0";
+            .FirstOrDefault()?.InformationalVersion.Split('+')[0] ?? "0.3.0";
 
     protected override async Task OnInitializedAsync()
     {

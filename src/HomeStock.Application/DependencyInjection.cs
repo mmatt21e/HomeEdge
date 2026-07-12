@@ -18,6 +18,10 @@ public static class DependencyInjection
         services.AddScoped<ISettingsService, SettingsService>();
         services.AddScoped<IAttachmentService, AttachmentService>();
         services.AddScoped<IImportExportService, ImportExportService>();
+        services.AddScoped<ILoanService, LoanService>();
+        services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<IBackupRestoreService, BackupRestoreService>();
         return services;
     }
 }

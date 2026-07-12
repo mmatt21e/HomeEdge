@@ -1,0 +1,45 @@
+@page "/activity"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IItemHistoryService History
+
+<PageTitle>Activity · HomeStock</PageTitle>
+
+<div class="page-header"><h1>Recent activity</h1></div>
+
+<div class="panel">
+    <p class="text-secondary small">The latest changes across your inventory — creations, edits, status changes, loans, returns, audits, and attachments.</p>
+    @if (_activity is null)
+    {
+        <LoadingIndicator />
+    }
+    else if (_activity.Count == 0)
+    {
+        <EmptyState Icon="bi-clock-history" Title="No activity yet" Message="Changes to items will appear here." />
+    }
+    else
+    {
+        <ul class="list-unstyled mb-0">
+            @foreach (var a in _activity)
+            {
+                <li class="tree-row">
+                    <div class="flex-grow-1">
+                        <div>
+                            <strong>@a.Action</strong>
+                            @if (a.ItemName is not null) { <a href="@($"/items/{a.ItemId}")" class="text-decoration-none">@a.ItemName</a> }
+                            @if (!string.IsNullOrEmpty(a.Summary)) { <span class="text-secondary">— @a.Summary</span> }
+                        </div>
+                        <div class="small text-secondary">
+                            @a.Timestamp.ToLocalTime().ToString("g")@(string.IsNullOrEmpty(a.UserName) ? "" : $" · {a.UserName}")
+                        </div>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<RecentActivityDto>? _activity;
+    protected override async Task OnInitializedAsync() => _activity = await History.GetRecentAsync(50);
+}

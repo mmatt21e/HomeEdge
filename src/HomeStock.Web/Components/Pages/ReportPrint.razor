@@ -1,0 +1,92 @@
+@page "/reports/print"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using HomeStock.Web.Infrastructure
+@inject IReportService ReportService
+@inject IJSRuntime JS
+
+<PageTitle>Report · HomeStock</PageTitle>
+
+<div class="page-header no-print">
+    <a href="/reports" class="small text-secondary"><i class="bi bi-chevron-left"></i> Reports</a>
+    <button class="btn btn-primary" @onclick="Print"><i class="bi bi-printer"></i> Print / Save PDF</button>
+</div>
+
+@if (_report is null)
+{
+    <LoadingIndicator />
+}
+else
+{
+    <div class="report-sheet">
+        <div class="report-head">
+            <h1>@Title</h1>
+            <div class="text-secondary">@_report.FilterDescription</div>
+            <div class="text-secondary small">Generated @DateTime.Now.ToString("yyyy-MM-dd HH:mm")</div>
+        </div>
+
+        <div class="report-summary">
+            <div><span class="report-num">@_report.TotalRecords</span> records</div>
+            <div><span class="report-num">@_report.TotalQuantity</span> total quantity</div>
+            <div><span class="report-num">@_report.TotalPurchasePrice.ToString("C2")</span> purchase total</div>
+            <div><span class="report-num">@_report.TotalEstimatedValue.ToString("C2")</span> estimated value</div>
+        </div>
+
+        <table class="table table-sm report-table">
+            <thead>
+                <tr>
+                    <th>Item</th><th>Category</th><th>Location</th>
+                    @if (Insurance) { <th>Manufacturer</th> <th>Model</th> }
+                    <th>Serial</th>@if (!Insurance) { <th>Barcode</th> }
+                    <th class="text-end">Qty</th><th>Condition</th>
+                    @if (Insurance) { <th>Purchased</th> }
+                    <th class="text-end">@(Insurance ? "Purchase" : "Value")</th>
+                    <th class="text-end">Est. value</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in _report.Rows)
+                {
+                    <tr>
+                        <td>@r.Name</td>
+                        <td>@r.CategoryName</td>
+                        <td>@r.LocationName@(string.IsNullOrEmpty(r.Container) ? "" : $" / {r.Container}")</td>
+                        @if (Insurance) { <td>@r.Manufacturer</td> <td>@r.ModelNumber</td> }
+                        <td>@r.SerialNumber</td>
+                        @if (!Insurance) { <td>@r.Barcode</td> }
+                        <td class="text-end">@r.Quantity</td>
+                        <td>@DisplayHelpers.Label(r.Condition)</td>
+                        @if (Insurance) { <td>@r.PurchaseDate?.ToString("yyyy-MM-dd")</td> }
+                        <td class="text-end">@r.PurchasePrice?.ToString("C2")</td>
+                        <td class="text-end">@r.EstimatedValue?.ToString("C2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "category")] public int? CategoryId { get; set; }
+    [SupplyParameterFromQuery(Name = "location")] public int? LocationId { get; set; }
+    [SupplyParameterFromQuery(Name = "sub")] public bool IncludeSub { get; set; }
+    [SupplyParameterFromQuery(Name = "archived")] public bool IncludeArchived { get; set; }
+    [SupplyParameterFromQuery(Name = "mode")] public string? Mode { get; set; }
+
+    private ReportDto? _report;
+    private bool Insurance => string.Equals(Mode, "insurance", StringComparison.OrdinalIgnoreCase);
+    private string Title => Insurance ? "Insurance Inventory Report" : "Inventory Report";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _report = await ReportService.GenerateAsync(new ReportFilter
+        {
+            CategoryId = CategoryId,
+            LocationId = LocationId,
+            IncludeSublocations = IncludeSub,
+            IncludeArchived = IncludeArchived
+        });
+    }
+
+    private async Task Print() => await JS.InvokeVoidAsync("window.print");
+}

@@ -1,0 +1,130 @@
+@inject ILoanService Loans
+@inject ToastService Toasts
+
+<div class="panel">
+    <h3 class="h6"><i class="bi bi-arrow-left-right"></i> Lending</h3>
+
+    @if (_open is not null)
+    {
+        <div class="alert @(_open.IsOverdue ? "alert-danger" : "alert-info") py-2">
+            <div><strong>Loaned to @_open.BorrowerName</strong> @if (_open.IsOverdue) { <span class="badge text-bg-danger ms-1">Overdue</span> }</div>
+            @if (!string.IsNullOrWhiteSpace(_open.BorrowerContact)) { <div class="small">@_open.BorrowerContact</div> }
+            <div class="small text-secondary">
+                Out @_open.LoanDate.ToString("yyyy-MM-dd")@(_open.ExpectedReturnDate is { } d ? $" · due {d:yyyy-MM-dd}" : "")
+            </div>
+        </div>
+        <AuthorizeView Policy="@Roles.CanEditPolicy">
+            @if (!_returning)
+            {
+                <button class="btn btn-primary btn-sm" @onclick="() => _returning = true"><i class="bi bi-box-arrow-in-left"></i> Record return</button>
+            }
+            else
+            {
+                <div class="row g-2 align-items-end">
+                    <div class="col-6"><label class="form-label small mb-1">Return date</label>
+                        <input type="date" class="form-control form-control-sm" @bind="_returnDate" /></div>
+                    <div class="col-6"><label class="form-label small mb-1">Notes</label>
+                        <input class="form-control form-control-sm" @bind="_returnNotes" placeholder="Condition, etc." /></div>
+                    <div class="col-12 d-flex gap-2">
+                        <button class="btn btn-primary btn-sm" @onclick="DoReturn">Confirm return</button>
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="() => _returning = false">Cancel</button>
+                    </div>
+                </div>
+            }
+        </AuthorizeView>
+    }
+    else
+    {
+        <AuthorizeView Policy="@Roles.CanEditPolicy" Context="auth">
+            <Authorized>
+                @if (!_loaning)
+                {
+                    <p class="text-secondary small mb-2">This item is available.</p>
+                    <button class="btn btn-outline-primary btn-sm" @onclick="() => _loaning = true"><i class="bi bi-box-arrow-right"></i> Loan out</button>
+                }
+                else
+                {
+                    <EditForm Model="_model" OnValidSubmit="DoLoan">
+                        <DataAnnotationsValidator />
+                        <div class="row g-2">
+                            <div class="col-12"><label class="form-label small mb-1">Borrower <span class="text-danger">*</span></label>
+                                <InputText class="form-control form-control-sm" @bind-Value="_model.BorrowerName" />
+                                <ValidationMessage For="() => _model.BorrowerName" class="field-error" /></div>
+                            <div class="col-12"><label class="form-label small mb-1">Contact</label>
+                                <InputText class="form-control form-control-sm" @bind-Value="_model.BorrowerContact" /></div>
+                            <div class="col-6"><label class="form-label small mb-1">Loan date</label>
+                                <InputDate class="form-control form-control-sm" @bind-Value="_model.LoanDate" /></div>
+                            <div class="col-6"><label class="form-label small mb-1">Expected return</label>
+                                <InputDate class="form-control form-control-sm" @bind-Value="_model.ExpectedReturnDate" /></div>
+                            <div class="col-12"><label class="form-label small mb-1">Notes</label>
+                                <InputText class="form-control form-control-sm" @bind-Value="_model.Notes" /></div>
+                        </div>
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="submit" class="btn btn-primary btn-sm">Loan out</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => _loaning = false">Cancel</button>
+                        </div>
+                    </EditForm>
+                }
+            </Authorized>
+            <NotAuthorized><p class="text-secondary small mb-0">This item is available.</p></NotAuthorized>
+        </AuthorizeView>
+    }
+
+    @if (_history.Count > 0)
+    {
+        <details class="mt-3">
+            <summary class="small text-secondary">Lending history (@_history.Count)</summary>
+            <ul class="list-unstyled small mt-2 mb-0">
+                @foreach (var l in _history)
+                {
+                    <li class="mb-1">
+                        <strong>@l.BorrowerName</strong> · @l.LoanDate.ToString("yyyy-MM-dd")
+                        @if (l.ActualReturnDate is { } ret) { <span>→ returned @ret.ToString("yyyy-MM-dd")</span> }
+                        else { <span class="text-warning">still out</span> }
+                    </li>
+                }
+            </ul>
+        </details>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int ItemId { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private LoanDto? _open;
+    private IReadOnlyList<LoanDto> _history = Array.Empty<LoanDto>();
+    private LoanEditModel _model = new();
+    private bool _loaning, _returning;
+    private DateOnly _returnDate = DateOnly.FromDateTime(DateTime.UtcNow);
+    private string? _returnNotes;
+
+    protected override async Task OnParametersSetAsync() => await Load();
+
+    private async Task Load()
+    {
+        _open = await Loans.GetOpenLoanAsync(ItemId);
+        _history = await Loans.GetForItemAsync(ItemId);
+    }
+
+    private async Task DoLoan()
+    {
+        var r = await Loans.LoanOutAsync(ItemId, _model);
+        if (!r.Succeeded) { Toasts.Error(string.Join(" ", r.Errors)); return; }
+        Toasts.Success("Item loaned out.");
+        _loaning = false; _model = new();
+        await Load();
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task DoReturn()
+    {
+        if (_open is null) return;
+        var r = await Loans.ReturnAsync(_open.Id, _returnDate, _returnNotes);
+        if (!r.Succeeded) { Toasts.Error(string.Join(" ", r.Errors)); return; }
+        Toasts.Success("Return recorded.");
+        _returning = false; _returnNotes = null;
+        await Load();
+        await OnChanged.InvokeAsync();
+    }
+}

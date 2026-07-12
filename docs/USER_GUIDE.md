@@ -71,6 +71,44 @@ Shows total item records, total quantity, estimated total value, warranties expi
 items loaned out, items missing photos, items with no location, recently added/updated items,
 and counts by category and location.
 
+## Lending items out
+
+Open an item and use the **Lending** panel:
+
+- **Loan out** — enter the borrower's name (and optionally contact, dates, notes). The item's
+  status becomes *Loaned* and it shows on the dashboard's "Loaned out" tile.
+- **Record return** — when it comes back, set the return date and any notes; the status returns to
+  *Available*. The full lending history stays on the item, and overdue loans are flagged in red.
+
+## Running an inventory audit
+
+Go to **Audits → Start an audit**, pick a location (optionally including sub-locations), and start.
+HomeStock lists the items expected there. For each item, mark **Confirm / Missing / Damaged /
+Moved** (choose a destination for moved items) — or scan/type a barcode to confirm it instantly.
+When done, **Complete audit**: missing/damaged items get that status, moved items are relocated,
+and a **discrepancy report** is produced. Past audits and their discrepancies are kept under
+Audit history.
+
+## Reports (print / PDF)
+
+Under **Reports → Printable reports**, choose a category and/or location and generate an
+**Inventory** or **Insurance** report. Use your browser's Print dialog to print or "Save as PDF".
+The **Export** panel also offers CSV (for spreadsheets) and a full JSON backup.
+
+## Backup & restore
+
+- **Backup** — Reports → Export → *JSON backup* downloads your whole inventory.
+- **Restore** (administrators) — Reports → *Restore from JSON backup* uploads a backup, shows a
+  summary, and merges it in: it recreates missing categories, locations, tags and items, and
+  skips items already present. It never deletes existing data.
+
+Remember to also back up the **attachments** folder — see the Backup & Restore guide.
+
+## Reviewing activity
+
+**Settings → Recent activity** (`/activity`) shows the latest changes across your inventory —
+creations, edits, status changes, loans, returns, audits, and attachments.
+
 ## Tips
 
 - Use **tags** for cross-cutting labels ("fragile", "insured", "loanable").

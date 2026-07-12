@@ -55,4 +55,7 @@ public interface IDashboardService
 public interface IItemHistoryService
 {
     Task<IReadOnlyList<Models.ItemHistoryDto>> GetForItemAsync(int itemId, CancellationToken ct = default);
+
+    /// <summary>Most recent change-log entries across all items (for the admin activity feed).</summary>
+    Task<IReadOnlyList<Models.RecentActivityDto>> GetRecentAsync(int limit = 25, CancellationToken ct = default);
 }

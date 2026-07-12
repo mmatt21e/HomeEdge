@@ -1,0 +1,199 @@
+@page "/audits/{Id:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using HomeStock.Domain.Enums
+@inject IAuditService AuditService
+@inject ILocationService LocationService
+@inject NavigationManager Nav
+@inject ToastService Toasts
+
+<PageTitle>Audit · HomeStock</PageTitle>
+
+@if (_audit is null)
+{
+    <LoadingIndicator />
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <a href="/audits" class="small text-secondary"><i class="bi bi-chevron-left"></i> Audits</a>
+            <h1>Audit — @_audit.LocationName</h1>
+        </div>
+        @if (_audit.Status == AuditStatus.InProgress)
+        {
+            <AuthorizeView Policy="@Roles.CanEditPolicy">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-danger" @onclick="Cancel">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Complete"><i class="bi bi-check2-all"></i> Complete audit</button>
+                </div>
+            </AuthorizeView>
+        }
+    </div>
+
+    <div class="panel mb-3">
+        <div class="d-flex flex-wrap gap-2">
+            <span class="badge text-bg-secondary">@_audit.Total expected</span>
+            <span class="badge text-bg-success">@_audit.Confirmed confirmed</span>
+            <span class="badge text-bg-warning">@_audit.Pending pending</span>
+            <span class="badge text-bg-danger">@_audit.Missing missing</span>
+            <span class="badge text-bg-info">@_audit.Moved moved</span>
+            <span class="badge text-bg-dark">@_audit.Damaged damaged</span>
+        </div>
+        @if (_audit.Status == AuditStatus.Completed)
+        {
+            <p class="text-secondary small mt-2 mb-0">Completed @_audit.CompletedAt?.ToLocalTime().ToString("g").</p>
+        }
+    </div>
+
+    @if (_audit.Status == AuditStatus.InProgress)
+    {
+        <div class="panel mb-3">
+            <label class="form-label small mb-1">Scan or type a barcode to confirm an item quickly</label>
+            <div class="input-group" style="max-width: 420px;">
+                <input class="form-control" placeholder="Barcode…" @bind="_scanCode"
+                       @onkeydown="@(async e => { if (e.Key == "Enter") await ScanConfirm(); })" />
+                <button class="btn btn-outline-primary" @onclick="ScanConfirm">Confirm</button>
+            </div>
+        </div>
+    }
+
+    @if (_audit.Total == 0)
+    {
+        <EmptyState Icon="bi-inbox" Title="No items expected here"
+                    Message="This location had no active items assigned when the audit started." />
+    }
+    else
+    {
+        <div class="panel">
+            @foreach (var row in _audit.Items)
+            {
+                <div class="tree-row flex-wrap">
+                    <div class="flex-grow-1">
+                        <a href="@($"/items/{row.ItemId}")" class="tree-name text-decoration-none text-body">@row.ItemName</a>
+                        @if (!string.IsNullOrEmpty(row.Barcode)) { <span class="tree-code ms-2">@row.Barcode</span> }
+                        <div>@ResultBadge(row.Result)</div>
+                    </div>
+                    @if (_audit.Status == AuditStatus.InProgress)
+                    {
+                        <AuthorizeView Policy="@Roles.CanEditPolicy">
+                            <div class="btn-group btn-group-sm flex-wrap">
+                                <button class="btn @Btn(row, AuditItemResult.Confirmed, "success")" @onclick="() => Record(row.Id, AuditItemResult.Confirmed)">Confirm</button>
+                                <button class="btn @Btn(row, AuditItemResult.Missing, "danger")" @onclick="() => Record(row.Id, AuditItemResult.Missing)">Missing</button>
+                                <button class="btn @Btn(row, AuditItemResult.Damaged, "dark")" @onclick="() => Record(row.Id, AuditItemResult.Damaged)">Damaged</button>
+                                <button class="btn @Btn(row, AuditItemResult.Moved, "info")" @onclick="() => BeginMove(row.Id)">Moved…</button>
+                            </div>
+                        </AuthorizeView>
+                    }
+                    @if (_movingRowId == row.Id)
+                    {
+                        <div class="w-100 mt-2 d-flex gap-2 align-items-end">
+                            <div class="flex-grow-1" style="max-width:360px;">
+                                <label class="form-label small mb-1">Moved to location</label>
+                                <select class="form-select form-select-sm" @bind="_moveToLocationId">
+                                    <option value="0">— Select —</option>
+                                    @foreach (var n in _tree) { <option value="@n.Location.Id">@n.Path</option> }
+                                </select>
+                            </div>
+                            <button class="btn btn-primary btn-sm" @onclick="() => ConfirmMove(row.Id)">Save</button>
+                            <button class="btn btn-outline-secondary btn-sm" @onclick="() => _movingRowId = null">Cancel</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        @if (_audit.Status == AuditStatus.Completed && _audit.Discrepancies.Any())
+        {
+            <div class="panel mt-3">
+                <h3 class="h6"><i class="bi bi-exclamation-triangle text-warning"></i> Discrepancy report</h3>
+                <ul class="mb-0">
+                    @foreach (var d in _audit.Discrepancies)
+                    {
+                        <li>@d.ItemName — <strong>@d.Result</strong>@(d.MovedToLocationName is { } m ? $" → {m}" : "")</li>
+                    }
+                </ul>
+            </div>
+        }
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private AuditDto? _audit;
+    private IReadOnlyList<LocationTreeNode> _tree = Array.Empty<LocationTreeNode>();
+    private string? _scanCode;
+    private int? _movingRowId;
+    private int _moveToLocationId;
+
+    protected override async Task OnInitializedAsync() => _tree = await LocationService.GetTreeAsync();
+    protected override async Task OnParametersSetAsync() => await Load();
+
+    private async Task Load()
+    {
+        _audit = await AuditService.GetAsync(Id);
+        if (_audit is null) Nav.NavigateTo("/audits");
+    }
+
+    private async Task Record(int auditItemId, AuditItemResult result)
+    {
+        var r = await AuditService.RecordResultAsync(auditItemId, result, null, null);
+        if (!r.Succeeded) { Toasts.Error(string.Join(" ", r.Errors)); return; }
+        await Load();
+    }
+
+    private void BeginMove(int auditItemId) { _movingRowId = auditItemId; _moveToLocationId = 0; }
+
+    private async Task ConfirmMove(int auditItemId)
+    {
+        if (_moveToLocationId == 0) { Toasts.Warning("Choose a location."); return; }
+        var r = await AuditService.RecordResultAsync(auditItemId, AuditItemResult.Moved, _moveToLocationId, null);
+        if (!r.Succeeded) { Toasts.Error(string.Join(" ", r.Errors)); return; }
+        _movingRowId = null;
+        await Load();
+    }
+
+    private async Task ScanConfirm()
+    {
+        if (string.IsNullOrWhiteSpace(_scanCode)) return;
+        var r = await AuditService.ConfirmByScanAsync(Id, _scanCode.Trim());
+        if (!r.Succeeded) Toasts.Warning(string.Join(" ", r.Errors));
+        else Toasts.Success("Confirmed.");
+        _scanCode = null;
+        await Load();
+    }
+
+    private async Task Complete()
+    {
+        var r = await AuditService.CompleteAsync(Id, null);
+        if (!r.Succeeded) { Toasts.Error(string.Join(" ", r.Errors)); return; }
+        Toasts.Success("Audit completed.");
+        await Load();
+    }
+
+    private async Task Cancel()
+    {
+        var r = await AuditService.CancelAsync(Id);
+        if (!r.Succeeded) { Toasts.Error(string.Join(" ", r.Errors)); return; }
+        await Load();
+    }
+
+    private static string Btn(AuditItemDto row, AuditItemResult result, string color)
+        => row.Result == result ? $"btn-{color}" : $"btn-outline-{color}";
+
+    private static RenderFragment ResultBadge(AuditItemResult result) => builder =>
+    {
+        var (text, cls) = result switch
+        {
+            AuditItemResult.Confirmed => ("Confirmed", "success"),
+            AuditItemResult.Missing => ("Missing", "danger"),
+            AuditItemResult.Moved => ("Moved", "info"),
+            AuditItemResult.Damaged => ("Damaged", "dark"),
+            _ => ("Pending", "secondary")
+        };
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"badge text-bg-{cls}");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
+}

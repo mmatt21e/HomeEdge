@@ -1,0 +1,99 @@
+@page "/audits"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IAuditService AuditService
+@inject ILocationService LocationService
+@inject NavigationManager Nav
+@inject ToastService Toasts
+
+<PageTitle>Audits · HomeStock</PageTitle>
+
+<div class="page-header"><h1>Inventory audits</h1></div>
+
+<AuthorizeView Policy="@Roles.CanEditPolicy">
+    <div class="panel mb-3">
+        <h3 class="h6"><i class="bi bi-plus-circle"></i> Start an audit</h3>
+        <p class="text-secondary small">Pick a room, cabinet, shelf or bin. HomeStock lists the items expected there so you can check each one off.</p>
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6">
+                <label class="form-label small mb-1">Location</label>
+                <select class="form-select" @bind="_locationId">
+                    <option value="0">— Select a location —</option>
+                    @foreach (var n in _tree)
+                    {
+                        <option value="@n.Location.Id">@n.Path</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="inclSub" @bind="_includeSub" />
+                    <label class="form-check-label" for="inclSub">Include sub-locations</label>
+                </div>
+            </div>
+            <div class="col-12 col-md-2">
+                <button class="btn btn-primary w-100" @onclick="Start" disabled="@(_locationId == 0)">Start</button>
+            </div>
+        </div>
+    </div>
+</AuthorizeView>
+
+<div class="panel">
+    <h3 class="h6"><i class="bi bi-clock-history"></i> Audit history</h3>
+    @if (_history is null)
+    {
+        <LoadingIndicator />
+    }
+    else if (_history.Count == 0)
+    {
+        <p class="text-secondary small mb-0">No audits yet. Start one above.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead><tr><th>Location</th><th>Started</th><th>Status</th><th>Items</th><th>Discrepancies</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var a in _history)
+                    {
+                        <tr>
+                            <td>@a.LocationName</td>
+                            <td class="small">@a.StartedAt.ToLocalTime().ToString("g")</td>
+                            <td>
+                                @switch (a.Status)
+                                {
+                                    case Domain.Enums.AuditStatus.InProgress: <span class="badge text-bg-warning">In progress</span> break;
+                                    case Domain.Enums.AuditStatus.Completed: <span class="badge text-bg-success">Completed</span> break;
+                                    default: <span class="badge text-bg-secondary">Cancelled</span> break;
+                                }
+                            </td>
+                            <td>@a.ItemCount</td>
+                            <td>@(a.DiscrepancyCount > 0 ? $"{a.DiscrepancyCount}" : "—")</td>
+                            <td><a class="btn btn-sm btn-outline-secondary" href="@($"/audits/{a.Id}")">Open</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<LocationTreeNode> _tree = Array.Empty<LocationTreeNode>();
+    private IReadOnlyList<AuditListDto>? _history;
+    private int _locationId;
+    private bool _includeSub = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tree = await LocationService.GetTreeAsync();
+        _history = await AuditService.GetHistoryAsync();
+    }
+
+    private async Task Start()
+    {
+        var result = await AuditService.StartAsync(_locationId, _includeSub);
+        if (!result.Succeeded) { Toasts.Error(string.Join(" ", result.Errors)); return; }
+        Nav.NavigateTo($"/audits/{result.Value}");
+    }
+}

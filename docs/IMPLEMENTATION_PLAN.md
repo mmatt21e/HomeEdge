@@ -60,11 +60,12 @@ See [PHASE1_CHECKLIST.md](PHASE1_CHECKLIST.md).
 - Downloadable installers/upgraders and an automated release pipeline (self-contained builds for
   Windows/Linux/macOS + Docker image). See [PHASE2_CHECKLIST.md](PHASE2_CHECKLIST.md).
 
-### Phase 3 — Operations
+### Phase 3 — Operations ✅ (complete)
 - Lending workflow (borrower, dates, return) with history.
 - Location audits (expected list → confirm/missing/moved/damaged → discrepancy report → history).
 - Printable inventory & insurance reports, filtered by location/category.
-- Full backup & restore with validation; expanded change history views.
+- Backup & restore with validation; expanded change-history / activity views.
+  See [PHASE3_CHECKLIST.md](PHASE3_CHECKLIST.md).
 
 ### Phase 4 — Hardening & reach
 - PWA polish (offline shell already scaffolded), install prompts, camera permissions.

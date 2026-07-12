@@ -79,7 +79,9 @@ else
         </div>
 
         <div class="col-12 col-lg-4">
-            <div class="panel">
+            <ItemLoanPanel ItemId="Id" OnChanged="Reload" />
+
+            <div class="panel mt-3">
                 <h3 class="h6"><i class="bi bi-clock-history"></i> History</h3>
                 @if (_history.Count == 0)
                 {
