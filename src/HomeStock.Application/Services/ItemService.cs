@@ -236,6 +236,21 @@ public class ItemService(
         return Result.Success();
     }
 
+    public async Task<Result> AssignBarcodeAsync(int itemId, string barcode, CancellationToken ct = default)
+    {
+        barcode = barcode.Trim();
+        if (string.IsNullOrEmpty(barcode)) return Result.Failure("Barcode is empty.");
+
+        var entity = await db.Items.FirstOrDefaultAsync(i => i.Id == itemId, ct);
+        if (entity is null) return Result.Failure("Item not found.");
+
+        var warnings = await CheckDuplicatesAsync(null, barcode, itemId, ct);
+        entity.Barcode = barcode;
+        AddHistory(entity.Id, HistoryAction.Updated, $"Barcode assigned: {barcode}", null);
+        await db.SaveChangesAsync(ct);
+        return Result.Success(warnings);
+    }
+
     // --- helpers ---
 
     private async Task<IReadOnlyList<string>> ValidateReferencesAsync(ItemEditModel m, CancellationToken ct)

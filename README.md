@@ -5,9 +5,12 @@ your household — from any phone, tablet, or computer on your local network. Ru
 machine, keeps your data on your own disk, and is built so you can add secure remote access
 later without rewriting anything.
 
-> **Status:** Phase 1 complete (foundations: auth, database, items, categories, locations,
-> responsive UI, Docker). Phases 2–4 (scanning, uploads, dashboard extras, lending, audits,
-> reports, PWA/remote hardening) are planned — see [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+> **Status:** Phases 1–2 complete. Phase 1 delivered the foundations (auth, database, items,
+> categories, locations, responsive UI, Docker). **Phase 2** adds photo/document uploads,
+> phone-camera barcode/QR scanning, CSV/JSON export, a guided CSV import wizard, and
+> **downloadable installers/upgraders** with an automated release pipeline. Phases 3–4 (lending,
+> audits, reports, PWA/remote hardening) are planned — see
+> [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ---
 
@@ -23,6 +26,33 @@ later without rewriting anything.
 
 Architecture is layered: **Domain → Application → Infrastructure → Web**. See
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+---
+
+## Download & install (released builds)
+
+No .NET SDK needed — released builds bundle the runtime. One-command install:
+
+**Linux / macOS**
+```bash
+curl -fsSL https://raw.githubusercontent.com/mmatt21e/HomeEdge/main/scripts/install.sh | bash
+```
+
+**Windows (PowerShell)**
+```powershell
+irm https://raw.githubusercontent.com/mmatt21e/HomeEdge/main/scripts/install.ps1 | iex
+```
+
+**Docker image**
+```bash
+docker run -d -p 8080:8080 -v homestock-data:/data \
+  -e Seed__AdminPassword=change-me ghcr.io/mmatt21e/homeedge:latest
+```
+
+Upgrade later with `./upgrade.sh` (Linux/macOS) or by re-running the installer — your data is
+preserved and migrations apply automatically. Releases (self-contained installers for
+Windows/Linux/macOS + checksums + Docker image) are produced automatically from version tags.
+Full details: [`docs/RELEASES.md`](docs/RELEASES.md).
 
 ---
 
@@ -86,9 +116,10 @@ In **Development** the seed creates:
 dotnet test HomeStock.slnx
 ```
 
-24 unit tests cover the category, location, item, and dashboard business logic (duplicate
-detection, history recording, move-cycle prevention, search/filtering, aggregation) against a
-real in-memory SQLite database.
+32 unit tests cover the category, location, item, dashboard, attachment, and import/export
+business logic (duplicate detection, history recording, move-cycle prevention, search/filtering,
+aggregation, file storage, CSV mapping/validation/commit) against a real in-memory SQLite
+database.
 
 ---
 
@@ -131,8 +162,24 @@ own set — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#databases-and-migr
   desktop, **dark/light/system themes**, toasts, confirmations, empty states, loading
   indicators, and an installable PWA shell.
 
-The **Scan**, **Audits**, and **Reports** sections are present in the navigation and clearly
-signposted as arriving in later phases (they are not dead buttons).
+The **Audits** section is present in the navigation and clearly signposted as arriving in a later
+phase (not a dead button).
+
+## Features (Phase 2)
+
+- **Photos & documents** — attach multiple files per item (photos, serial-number shots, receipts,
+  warranties, manuals, insurance docs). Binaries are stored outside the database under safe,
+  server-generated filenames with size/type validation; downloads go through an authorized
+  endpoint. Thumbnails and a gallery appear on each item; adds/removals are recorded in history.
+- **Barcode & QR scanning** — scan UPC/EAN barcodes and QR codes with the phone camera (bundled,
+  offline-capable library). A scan opens the matching item, offers to **create** a new item
+  pre-filled with the code, or **assigns** the code to an existing item; HomeStock location QR
+  labels open that location's contents. A manual-entry fallback covers cameraless devices.
+- **CSV & JSON export** — download items as CSV (insurance-ready) or a full JSON backup.
+- **CSV import wizard** — upload → **column mapping** (auto-detected) → **validation** with
+  per-row errors/warnings → **duplicate detection** → **confirmation** before anything is saved.
+- **Released installers/upgraders** — self-contained one-command install and in-place upgrade
+  for Windows/Linux/macOS, plus a published Docker image, via an automated release pipeline.
 
 ---
 
@@ -142,6 +189,8 @@ signposted as arriving in later phases (they are not dead buttons).
 |-------|----------|
 | [Implementation plan](docs/IMPLEMENTATION_PLAN.md) | Phased roadmap and data model |
 | [Phase 1 checklist](docs/PHASE1_CHECKLIST.md) | What was delivered in Phase 1 |
+| [Phase 2 checklist](docs/PHASE2_CHECKLIST.md) | What was delivered in Phase 2 |
+| [Releases & installers](docs/RELEASES.md) | Downloadable installers, upgrades, cutting releases |
 | [Architecture](docs/ARCHITECTURE.md) | Layers, DI, data model, migrations |
 | [Local network deployment](docs/LOCAL_NETWORK_DEPLOYMENT.md) | Docker, IP/hostname access |
 | [Backup & restore](docs/BACKUP_RESTORE.md) | Backing up and restoring data |

@@ -14,15 +14,15 @@
 </div>
 
 @code {
+    [SupplyParameterFromQuery] public string? Barcode { get; set; }
+
     private readonly ItemEditModel _model = new();
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnParametersSet()
     {
-        if (firstRender)
-        {
-            // Focus the name field for fast entry.
-            await Task.Yield();
-        }
+        // Prefill a scanned barcode when arriving from the Scan page.
+        if (!string.IsNullOrWhiteSpace(Barcode) && string.IsNullOrEmpty(_model.Barcode))
+            _model.Barcode = Barcode.Trim();
     }
 
     private async Task Save()

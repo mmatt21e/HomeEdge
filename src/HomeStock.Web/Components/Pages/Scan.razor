@@ -1,10 +1,185 @@
 @page "/scan"
 @attribute [Authorize]
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject IItemService ItemService
+@inject ILocationService LocationService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject ToastService Toasts
 
 <PageTitle>Scan · HomeStock</PageTitle>
 
 <div class="page-header"><h1>Scan</h1></div>
-<EmptyState Icon="bi-upc-scan" Title="Camera scanning arrives in Phase 2"
-            Message="Barcode and QR scanning (open a matching item, create a new one, or attach a code) is scheduled for the next phase. In the meantime you can search by barcode from the Items page.">
-    <Action><a class="btn btn-primary" href="/items"><i class="bi bi-box-seam"></i> Go to items</a></Action>
-</EmptyState>
+
+<div class="panel">
+    <p class="text-secondary small">
+        Point your camera at a product barcode (UPC/EAN), a QR code, or a HomeStock location label.
+        If a match exists it opens; otherwise you can create a new item or attach the code to one.
+    </p>
+
+    @if (!_scanning)
+    {
+        <button class="btn btn-primary" @onclick="StartScan"><i class="bi bi-camera"></i> Start camera</button>
+    }
+    else
+    {
+        <div class="scanner-viewport"><div id="scanner-region"></div></div>
+        <div class="text-center mt-2">
+            <button class="btn btn-outline-secondary btn-sm" @onclick="StopScan"><i class="bi bi-stop-circle"></i> Stop</button>
+        </div>
+    }
+
+    <div class="mt-3">
+        <label class="form-label small">Or enter a code manually</label>
+        <div class="input-group" style="max-width: 420px;">
+            <input class="form-control" placeholder="Barcode or location code" @bind="_manualCode"
+                   @onkeydown="@(async e => { if (e.Key == "Enter") await ResolveManual(); })" />
+            <button class="btn btn-outline-primary" @onclick="ResolveManual"><i class="bi bi-search"></i> Look up</button>
+        </div>
+    </div>
+</div>
+
+@if (_notFoundCode is not null)
+{
+    <div class="scan-result panel mt-3">
+        <h3 class="h6">No item found for <span class="tree-code">@_notFoundCode</span></h3>
+        <div class="d-flex flex-column gap-2">
+            <AuthorizeView Policy="@Roles.CanEditPolicy">
+                <a class="btn btn-primary" href="@($"/items/new?barcode={Uri.EscapeDataString(_notFoundCode)}")">
+                    <i class="bi bi-plus-lg"></i> Create a new item with this code
+                </a>
+                <div>
+                    <button class="btn btn-outline-secondary" @onclick="ToggleAssign">
+                        <i class="bi bi-link-45deg"></i> Assign this code to an existing item
+                    </button>
+                </div>
+            </AuthorizeView>
+        </div>
+
+        @if (_assigning)
+        {
+            <div class="mt-3">
+                <input class="form-control mb-2" placeholder="Search items by name…" @bind="_assignSearch" @bind:event="oninput"
+                       @onkeyup="SearchAssignTargets" />
+                @if (_assignMatches.Count > 0)
+                {
+                    <div class="d-flex flex-column gap-1">
+                        @foreach (var m in _assignMatches)
+                        {
+                            <button class="btn btn-outline-secondary text-start" @onclick="() => Assign(m.Id)">
+                                @m.Name <span class="text-secondary small">@m.CategoryName</span>
+                            </button>
+                        }
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(_assignSearch))
+                {
+                    <p class="text-secondary small mb-0">No matching items.</p>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _scanning;
+    private string? _manualCode;
+    private string? _notFoundCode;
+    private bool _assigning;
+    private string? _assignSearch;
+    private IReadOnlyList<ItemListDto> _assignMatches = Array.Empty<ItemListDto>();
+    private DotNetObjectReference<Scan>? _ref;
+    private bool _handling;
+
+    private async Task StartScan()
+    {
+        _notFoundCode = null;
+        _ref ??= DotNetObjectReference.Create(this);
+        _scanning = true;
+        StateHasChanged();
+        var ok = await JS.InvokeAsync<bool>("homestockScanner.start", "scanner-region", _ref);
+        if (!ok)
+        {
+            _scanning = false;
+            Toasts.Warning("Camera unavailable. Use manual entry below.");
+        }
+    }
+
+    private async Task StopScan()
+    {
+        _scanning = false;
+        await JS.InvokeVoidAsync("homestockScanner.stop");
+    }
+
+    [JSInvokable]
+    public async Task OnScan(string decodedText)
+    {
+        if (_handling) return;               // debounce rapid multi-frame callbacks
+        _handling = true;
+        await StopScan();
+        await Resolve(decodedText);
+        _handling = false;
+    }
+
+    private async Task ResolveManual()
+    {
+        if (!string.IsNullOrWhiteSpace(_manualCode)) await Resolve(_manualCode.Trim());
+    }
+
+    private async Task Resolve(string code)
+    {
+        code = code.Trim();
+        if (string.IsNullOrEmpty(code)) return;
+
+        // A HomeStock QR encodes a URL to this app — just follow it.
+        if (Uri.TryCreate(code, UriKind.Absolute, out var uri) &&
+            uri.Host == new Uri(Nav.BaseUri).Host)
+        {
+            Nav.NavigateTo(uri.PathAndQuery);
+            return;
+        }
+
+        // A location label code (LOC-XXXXXX) opens that location's contents.
+        if (code.StartsWith("LOC-", StringComparison.OrdinalIgnoreCase))
+        {
+            var loc = await LocationService.GetByCodeAsync(code);
+            if (loc is not null) { Nav.NavigateTo($"/items?location={loc.Id}"); return; }
+        }
+
+        // Otherwise treat it as a product barcode.
+        var item = await ItemService.GetByBarcodeAsync(code);
+        if (item is not null) { Nav.NavigateTo($"/items/{item.Id}"); return; }
+
+        _notFoundCode = code;
+        _assigning = false;
+        _assignSearch = null;
+        _assignMatches = Array.Empty<ItemListDto>();
+        StateHasChanged();
+    }
+
+    private void ToggleAssign() => _assigning = !_assigning;
+
+    private async Task SearchAssignTargets()
+    {
+        if (string.IsNullOrWhiteSpace(_assignSearch)) { _assignMatches = Array.Empty<ItemListDto>(); return; }
+        var page = await ItemService.SearchAsync(new ItemQuery { Search = _assignSearch, PageSize = 8 });
+        _assignMatches = page.Items;
+    }
+
+    private async Task Assign(int itemId)
+    {
+        if (_notFoundCode is null) return;
+        var result = await ItemService.AssignBarcodeAsync(itemId, _notFoundCode);
+        if (!result.Succeeded) { Toasts.Error(string.Join(" ", result.Errors)); return; }
+        foreach (var w in result.Warnings) Toasts.Warning(w);
+        Toasts.Success("Code assigned.");
+        Nav.NavigateTo($"/items/{itemId}");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("homestockScanner.stop"); } catch { /* circuit may be gone */ }
+        _ref?.Dispose();
+    }
+}

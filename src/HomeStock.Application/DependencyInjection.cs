@@ -16,6 +16,8 @@ public static class DependencyInjection
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IItemHistoryService, ItemHistoryService>();
         services.AddScoped<ISettingsService, SettingsService>();
+        services.AddScoped<IAttachmentService, AttachmentService>();
+        services.AddScoped<IImportExportService, ImportExportService>();
         return services;
     }
 }

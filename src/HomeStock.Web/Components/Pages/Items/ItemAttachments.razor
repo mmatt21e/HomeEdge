@@ -1,0 +1,134 @@
+@using HomeStock.Domain.Enums
+@inject IAttachmentService Attachments
+@inject ToastService Toasts
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h3 class="h6 mb-0"><i class="bi bi-paperclip"></i> Attachments</h3>
+        <span class="text-secondary small">@_items.Count file(s)</span>
+    </div>
+
+    <AuthorizeView Policy="@Roles.CanEditPolicy">
+        <div class="mb-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-sm-5">
+                    <label class="form-label small mb-1">Type</label>
+                    <select class="form-select form-select-sm" @bind="_uploadType">
+                        @foreach (var t in Enum.GetValues<AttachmentType>())
+                        {
+                            <option value="@t">@Label(t)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-7">
+                    <label class="form-label small mb-1">Add files</label>
+                    <InputFile class="form-control form-control-sm" multiple OnChange="OnFilesSelected" disabled="@_uploading" />
+                </div>
+            </div>
+            @if (_uploading)
+            {
+                <div class="small text-secondary mt-2"><span class="spinner-border spinner-border-sm"></span> Uploading…</div>
+            }
+        </div>
+    </AuthorizeView>
+
+    @if (_items.Count == 0)
+    {
+        <p class="text-secondary small mb-0">No photos or documents yet. Add receipts, warranties, manuals or photos above.</p>
+    }
+    else
+    {
+        <div class="attach-grid">
+            @foreach (var a in _items)
+            {
+                <div class="attach-card" @key="a.Id">
+                    <a href="@($"/api/attachments/{a.Id}/content")" target="_blank" class="attach-thumb">
+                        @if (a.IsImage)
+                        {
+                            <img src="@($"/api/attachments/{a.Id}/content")" alt="@a.OriginalFileName" loading="lazy" />
+                        }
+                        else
+                        {
+                            <i class="bi @FileIcon(a)"></i>
+                        }
+                    </a>
+                    <div class="attach-meta">
+                        <div class="attach-name text-truncate" title="@a.OriginalFileName">@a.OriginalFileName</div>
+                        <div class="attach-sub">@Label(a.Type) · @a.SizeDisplay</div>
+                    </div>
+                    <div class="attach-actions">
+                        <a class="btn btn-sm btn-outline-secondary" href="@($"/api/attachments/{a.Id}/download")" title="Download"><i class="bi bi-download"></i></a>
+                        <AuthorizeView Policy="@Roles.CanEditPolicy" Context="edit">
+                            <button class="btn btn-sm btn-outline-danger" title="Delete" @onclick="() => Delete(a)"><i class="bi bi-trash"></i></button>
+                        </AuthorizeView>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    [Parameter, EditorRequired] public int ItemId { get; set; }
+
+    private const long MaxBytes = 20 * 1024 * 1024;
+    private IReadOnlyList<AttachmentDto> _items = Array.Empty<AttachmentDto>();
+    private AttachmentType _uploadType = AttachmentType.Photo;
+    private bool _uploading;
+    private ConfirmDialog _confirm = default!;
+
+    protected override async Task OnParametersSetAsync() => await Load();
+
+    private async Task Load() => _items = await Attachments.GetForItemAsync(ItemId);
+
+    private async Task OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        _uploading = true;
+        var uploaded = 0;
+        try
+        {
+            foreach (var file in e.GetMultipleFiles(maximumFileCount: 20))
+            {
+                try
+                {
+                    await using var stream = file.OpenReadStream(MaxBytes);
+                    var result = await Attachments.AddAsync(ItemId, stream, file.Name, file.ContentType, _uploadType, null);
+                    if (result.Succeeded) uploaded++;
+                    else Toasts.Error($"{file.Name}: {string.Join(" ", result.Errors)}");
+                }
+                catch (IOException)
+                {
+                    Toasts.Error($"{file.Name}: exceeds the {MaxBytes / (1024 * 1024)} MB limit.");
+                }
+            }
+            if (uploaded > 0) Toasts.Success($"{uploaded} file(s) uploaded.");
+            await Load();
+        }
+        finally { _uploading = false; }
+    }
+
+    private async Task Delete(AttachmentDto a)
+    {
+        if (!await _confirm.ShowAsync("Delete attachment", $"Delete “{a.OriginalFileName}”? This cannot be undone.", "Delete")) return;
+        var r = await Attachments.DeleteAsync(a.Id);
+        if (r.Succeeded) { Toasts.Success("Attachment deleted."); await Load(); } else Toasts.Error(string.Join(" ", r.Errors));
+    }
+
+    private static string Label(AttachmentType t) => t switch
+    {
+        AttachmentType.SerialNumberPhoto => "Serial-number photo",
+        AttachmentType.WarrantyDocument => "Warranty",
+        AttachmentType.InsuranceDocument => "Insurance",
+        _ => t.ToString()
+    };
+
+    private static string FileIcon(AttachmentDto a) => a.ContentType switch
+    {
+        "application/pdf" => "bi-file-earmark-pdf",
+        var c when c.Contains("word") => "bi-file-earmark-word",
+        var c when c.Contains("sheet") || c.Contains("excel") || c.Contains("csv") => "bi-file-earmark-spreadsheet",
+        _ => "bi-file-earmark"
+    };
+}

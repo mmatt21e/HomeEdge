@@ -1,10 +1,233 @@
 @page "/reports"
 @attribute [Authorize]
+@rendermode InteractiveServer
+@inject IImportExportService ImportExport
+@inject ToastService Toasts
 
-<PageTitle>Reports · HomeStock</PageTitle>
+<PageTitle>Reports &amp; data · HomeStock</PageTitle>
 
-<div class="page-header"><h1>Reports</h1></div>
-<EmptyState Icon="bi-file-earmark-bar-graph" Title="Reports &amp; export arrive in Phase 2–3"
-            Message="CSV import/export, JSON backup, and printable insurance/inventory reports are scheduled for the next phases. Your data is already structured to support them.">
-    <Action><a class="btn btn-primary" href="/"><i class="bi bi-speedometer2"></i> Back to dashboard</a></Action>
-</EmptyState>
+<div class="page-header"><h1>Reports &amp; data</h1></div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-5">
+        <div class="panel">
+            <h3 class="h6"><i class="bi bi-download"></i> Export</h3>
+            <p class="text-secondary small">Download your inventory for spreadsheets, insurance records, or backup.</p>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="inclArch" @bind="_includeArchived" />
+                <label class="form-check-label" for="inclArch">Include archived items</label>
+            </div>
+            <div class="d-flex flex-column gap-2 align-items-start">
+                <a class="btn btn-outline-primary" href="@($"/api/export/items.csv?includeArchived={_includeArchived.ToString().ToLower()}")" target="_blank">
+                    <i class="bi bi-filetype-csv"></i> Export items (CSV)
+                </a>
+                <AuthorizeView Policy="@Roles.AdminPolicy">
+                    <a class="btn btn-outline-secondary" href="/api/export/backup.json" target="_blank">
+                        <i class="bi bi-file-earmark-zip"></i> JSON backup (full inventory)
+                    </a>
+                </AuthorizeView>
+            </div>
+            <p class="text-secondary small mt-3 mb-0">Printable insurance reports and location/category-filtered
+                report sheets are expanding in Phase 3; the CSV export already produces an
+                insurance-ready record today.</p>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-7">
+        <AuthorizeView Policy="@Roles.CanEditPolicy">
+            <Authorized>
+                <div class="panel">
+                    <h3 class="h6"><i class="bi bi-upload"></i> Import from CSV</h3>
+
+                    <div class="import-step">
+                        <span class="step @(Step >= 1 ? "active" : "")"><span class="num">1</span> Upload</span>
+                        <i class="bi bi-chevron-right small"></i>
+                        <span class="step @(Step >= 2 ? "active" : "")"><span class="num">2</span> Map columns</span>
+                        <i class="bi bi-chevron-right small"></i>
+                        <span class="step @(Step >= 3 ? "active" : "")"><span class="num">3</span> Review</span>
+                        <i class="bi bi-chevron-right small"></i>
+                        <span class="step @(Step >= 4 ? "active" : "")"><span class="num">4</span> Done</span>
+                    </div>
+
+                    @if (Step == 1)
+                    {
+                        <p class="text-secondary small">Choose a CSV file. The first row must contain column headers.
+                            You'll map columns and review before anything is saved.</p>
+                        <InputFile class="form-control" accept=".csv,text/csv" OnChange="OnFileSelected" disabled="@_busy" />
+                        @if (_busy) { <div class="small text-secondary mt-2"><span class="spinner-border spinner-border-sm"></span> Reading…</div> }
+                    }
+                    else if (Step == 2 && _preview is not null)
+                    {
+                        <p class="text-secondary small">@_preview.TotalDataRows row(s) found. Map your CSV columns to item fields
+                            (auto-detected where possible). <strong>Name</strong> is required.</p>
+                        <div class="table-responsive">
+                            <table class="table table-sm map-table align-middle">
+                                <thead><tr><th>Item field</th><th>CSV column</th></tr></thead>
+                                <tbody>
+                                    @foreach (var field in ImportFields.All)
+                                    {
+                                        <tr>
+                                            <td>@field @(field == ImportFields.Name ? "*" : "")</td>
+                                            <td>
+                                                <select class="form-select form-select-sm"
+                                                        value="@(_mapping.GetValueOrDefault(field) ?? "")"
+                                                        @onchange="e => SetMapping(field, e.Value?.ToString())">
+                                                    <option value="">— skip —</option>
+                                                    @foreach (var h in _preview.Headers)
+                                                    {
+                                                        <option value="@h">@h</option>
+                                                    }
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-secondary" @onclick="Reset">Start over</button>
+                            <button class="btn btn-primary" @onclick="Validate" disabled="@_busy">
+                                @if (_busy) { <span class="spinner-border spinner-border-sm"></span> } Validate
+                            </button>
+                        </div>
+                    }
+                    else if (Step == 3 && _validation is not null)
+                    {
+                        <div class="d-flex gap-3 flex-wrap mb-2">
+                            <span class="badge text-bg-success">@_validation.ValidCount importable</span>
+                            <span class="badge text-bg-danger">@_validation.InvalidCount with errors</span>
+                            <span class="badge text-bg-warning">@_validation.DuplicateCount duplicates</span>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="skipDup" @bind="_skipDuplicates" />
+                            <label class="form-check-label" for="skipDup">Skip duplicate rows (barcode/serial already present)</label>
+                        </div>
+                        <div class="table-responsive" style="max-height: 340px; overflow:auto;">
+                            <table class="table table-sm preview-table">
+                                <thead><tr><th>#</th><th>Name</th><th>Status</th><th>Notes</th></tr></thead>
+                                <tbody>
+                                    @foreach (var row in _validation.Rows)
+                                    {
+                                        <tr class="@(row.WillImport ? "" : "row-invalid")">
+                                            <td>@row.RowNumber</td>
+                                            <td>@row.Name</td>
+                                            <td>
+                                                @if (!row.WillImport) { <span class="badge text-bg-danger">error</span> }
+                                                else if (row.IsDuplicate) { <span class="badge text-bg-warning">duplicate</span> }
+                                                else { <span class="badge text-bg-success">ok</span> }
+                                            </td>
+                                            <td class="small">@string.Join(" ", row.Errors.Concat(row.Warnings))</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-secondary" @onclick="() => Step = 2">Back</button>
+                            <button class="btn btn-primary" @onclick="Commit" disabled="@(_busy || !_validation.HasImportableRows)">
+                                @if (_busy) { <span class="spinner-border spinner-border-sm"></span> }
+                                Import @_validation.ValidCount item(s)
+                            </button>
+                        </div>
+                    }
+                    else if (Step == 4 && _commit is not null)
+                    {
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i> Imported <strong>@_commit.Imported</strong> item(s).
+                            @if (_commit.Skipped > 0) { <span>Skipped @_commit.Skipped.</span> }
+                        </div>
+                        @if (_commit.Errors.Count > 0)
+                        {
+                            <details class="mb-2"><summary class="small text-secondary">@_commit.Errors.Count row error(s)</summary>
+                                <ul class="small">@foreach (var e in _commit.Errors) { <li>@e</li> }</ul>
+                            </details>
+                        }
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-outline-primary" href="/items">View items</a>
+                            <button class="btn btn-outline-secondary" @onclick="Reset">Import another file</button>
+                        </div>
+                    }
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="panel"><p class="text-secondary mb-0">Importing requires an editor or administrator role.</p></div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</div>
+
+@code {
+    private bool _includeArchived;
+    private int Step = 1;
+    private bool _busy;
+    private byte[]? _csvBytes;
+    private ImportPreview? _preview;
+    private Dictionary<string, string> _mapping = new();
+    private ImportValidation? _validation;
+    private bool _skipDuplicates = true;
+    private ImportCommitResult? _commit;
+
+    private const long MaxCsvBytes = 15 * 1024 * 1024;
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _busy = true;
+        try
+        {
+            using var ms = new MemoryStream();
+            await using (var s = e.File.OpenReadStream(MaxCsvBytes)) await s.CopyToAsync(ms);
+            _csvBytes = ms.ToArray();
+
+            var preview = await ImportExport.PreviewCsvAsync(new MemoryStream(_csvBytes));
+            if (!preview.Succeeded) { Toasts.Error(string.Join(" ", preview.Errors)); return; }
+            _preview = preview.Value;
+            _mapping = new Dictionary<string, string>(_preview!.SuggestedMapping);
+            Step = 2;
+        }
+        catch (IOException)
+        {
+            Toasts.Error($"File exceeds the {MaxCsvBytes / (1024 * 1024)} MB limit.");
+        }
+        finally { _busy = false; }
+    }
+
+    private void SetMapping(string field, string? header)
+    {
+        if (string.IsNullOrEmpty(header)) _mapping.Remove(field);
+        else _mapping[field] = header;
+    }
+
+    private async Task Validate()
+    {
+        if (_csvBytes is null) return;
+        _busy = true;
+        try
+        {
+            var result = await ImportExport.ValidateCsvAsync(new MemoryStream(_csvBytes), _mapping);
+            if (!result.Succeeded) { Toasts.Error(string.Join(" ", result.Errors)); return; }
+            _validation = result.Value;
+            Step = 3;
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task Commit()
+    {
+        if (_csvBytes is null) return;
+        _busy = true;
+        try
+        {
+            var result = await ImportExport.CommitCsvAsync(new MemoryStream(_csvBytes), _mapping, _skipDuplicates);
+            if (!result.Succeeded) { Toasts.Error(string.Join(" ", result.Errors)); return; }
+            _commit = result.Value;
+            Toasts.Success($"Imported {_commit!.Imported} item(s).");
+            Step = 4;
+        }
+        finally { _busy = false; }
+    }
+
+    private void Reset()
+    {
+        Step = 1; _csvBytes = null; _preview = null; _mapping = new(); _validation = null; _commit = null;
+    }
+}

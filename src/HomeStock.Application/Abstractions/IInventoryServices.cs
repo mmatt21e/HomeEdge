@@ -42,6 +42,9 @@ public interface IItemService
     Task<Result> DeleteAsync(int id, CancellationToken ct = default);
     /// <summary>Warnings (not errors) if serial/barcode already exist on another item.</summary>
     Task<IReadOnlyList<string>> CheckDuplicatesAsync(string? serial, string? barcode, int? excludeItemId, CancellationToken ct = default);
+
+    /// <summary>Assigns a scanned barcode to an existing item and records history.</summary>
+    Task<Result> AssignBarcodeAsync(int itemId, string barcode, CancellationToken ct = default);
 }
 
 public interface IDashboardService

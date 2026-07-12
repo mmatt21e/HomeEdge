@@ -1,0 +1,40 @@
+HomeStock — self-contained build
+=================================
+
+This package bundles the .NET runtime, so you do NOT need to install anything else.
+
+Quick run
+---------
+Linux / macOS:
+    ./HomeStock.Web
+Windows:
+    HomeStock.Web.exe
+
+Then open http://localhost:5000 (or the URL printed in the console) in a browser.
+
+Recommended: bind to your LAN and set an admin password
+-------------------------------------------------------
+Linux / macOS:
+    ASPNETCORE_URLS="http://0.0.0.0:8080" Seed__AdminPassword="choose-a-strong-one" ./HomeStock.Web
+Windows (PowerShell):
+    $env:ASPNETCORE_URLS="http://0.0.0.0:8080"; $env:Seed__AdminPassword="choose-a-strong-one"; .\HomeStock.Web.exe
+
+Data location
+-------------
+The SQLite database and uploaded attachments are written to a "data" folder next to the
+executable. Back up that folder to back up everything. Override with:
+    ConnectionStrings__DefaultConnection="Data Source=/your/path/homestock.db"
+    Storage__AttachmentsPath="/your/path/attachments"
+
+Install as a background service / one-command install
+-----------------------------------------------------
+Use the included installer:
+    Linux / macOS:  ./install.sh
+    Windows:        powershell -ExecutionPolicy Bypass -File install.ps1
+Upgrade later with:
+    ./upgrade.sh                 (Linux / macOS)
+
+First-run admin
+---------------
+If you did not set Seed__AdminPassword, a random password is generated and printed to the
+console/logs on first start. Log in as admin@homestock.local and change it under Settings.

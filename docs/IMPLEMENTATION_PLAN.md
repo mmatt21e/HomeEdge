@@ -53,11 +53,12 @@ categories, hierarchical locations with QR labels, dashboard, search/filter, res
 mobile-first UI with theming, REST API, health checks, Docker deployment, unit tests.
 See [PHASE1_CHECKLIST.md](PHASE1_CHECKLIST.md).
 
-### Phase 2 — Capture & find
+### Phase 2 — Capture & find ✅ (complete)
 - Photo/document uploads (safe generated filenames, size/type validation, on-disk storage).
 - Barcode/QR scanning via the phone camera; open/create/attach on scan; pluggable product lookup.
-- Richer search facets and saved filters; CSV import (preview → map → validate → dedupe → confirm)
-  and CSV/JSON export.
+- CSV import (preview → map → validate → dedupe → confirm) and CSV/JSON export.
+- Downloadable installers/upgraders and an automated release pipeline (self-contained builds for
+  Windows/Linux/macOS + Docker image). See [PHASE2_CHECKLIST.md](PHASE2_CHECKLIST.md).
 
 ### Phase 3 — Operations
 - Lending workflow (borrower, dates, return) with history.

@@ -29,6 +29,7 @@
                         <input class="form-control" type="number" @bind="_warrantyDays" />
                     </div>
                     <button class="btn btn-primary" @onclick="Save"><i class="bi bi-check-lg"></i> Save settings</button>
+                    <p class="text-secondary small mt-3 mb-0">HomeStock version @_version</p>
                 </Authorized>
                 <NotAuthorized>
                     <dl class="row mb-0">
@@ -68,6 +69,11 @@
     private string _instanceName = "HomeStock";
     private string _currency = "USD";
     private int _warrantyDays = 30;
+    private readonly string _version =
+        System.Reflection.Assembly.GetExecutingAssembly()
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()?.InformationalVersion.Split('+')[0] ?? "0.2.0";
 
     protected override async Task OnInitializedAsync()
     {
