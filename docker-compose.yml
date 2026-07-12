@@ -28,6 +28,13 @@ services:
       # First-run admin account. Password comes from .env — never hardcode it here.
       Seed__AdminEmail: "${HOMESTOCK_ADMIN_EMAIL:-admin@homestock.local}"
       Seed__AdminPassword: "${HOMESTOCK_ADMIN_PASSWORD:-}"
+      # Optional SMTP for password-reset / confirmation emails (blank = no email sent).
+      Email__Host: "${Email__Host:-}"
+      Email__Port: "${Email__Port:-587}"
+      Email__Username: "${Email__Username:-}"
+      Email__Password: "${Email__Password:-}"
+      Email__UseSsl: "${Email__UseSsl:-true}"
+      Email__From: "${Email__From:-}"
       # Trusted reverse-proxy IPs (comma-separated) for future remote access; empty by default.
       ReverseProxy__KnownProxies__0: "${HOMESTOCK_TRUSTED_PROXY:-}"
       # Optional AI photo->inventory (any OpenAI-compatible vision endpoint). Blank = disabled.

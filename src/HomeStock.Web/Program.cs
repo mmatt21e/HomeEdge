@@ -61,10 +61,21 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
-builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+// Email: real SMTP when configured (Email section), otherwise a logging no-op.
+builder.Services.Configure<HomeStock.Web.Infrastructure.EmailOptions>(
+    builder.Configuration.GetSection(HomeStock.Web.Infrastructure.EmailOptions.SectionName));
+var emailOptions = builder.Configuration.GetSection(HomeStock.Web.Infrastructure.EmailOptions.SectionName)
+    .Get<HomeStock.Web.Infrastructure.EmailOptions>() ?? new();
+if (emailOptions.IsConfigured)
+    builder.Services.AddSingleton<IEmailSender<ApplicationUser>, HomeStock.Web.Infrastructure.SmtpEmailSender>();
+else
+    builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
 // Identifies the acting user for change-history stamping.
 builder.Services.AddScoped<HomeStock.Application.Abstractions.ICurrentUserService, CurrentUserService>();
+
+// Administrator user-management operations.
+builder.Services.AddScoped<HomeStock.Web.Infrastructure.IUserAdminService, HomeStock.Web.Infrastructure.UserAdminService>();
 
 // ---- Authorization policies (role tiers) ----
 builder.Services.AddAuthorizationBuilder()

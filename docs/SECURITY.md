@@ -6,8 +6,10 @@
 - Roles: **Administrator** (full control, incl. hard delete and settings), **Standard user**
   (create/edit items, categories, locations), **Read-only** (view + search only).
 - Self-registered users receive no elevated role (effectively read-only) until an administrator
-  assigns one. A dedicated user-management screen is planned; until then, roles can be assigned
-  directly via Identity (e.g. an admin-run SQL/EF update on `AspNetUserRoles`).
+  assigns one. Administrators manage users at **Settings → Manage users & roles** (`/settings/users`):
+  assign/remove roles, enable/disable accounts, create users, reset passwords, and delete —
+  with guards against removing/disabling/deleting the last administrator or your own account.
+  Disabling an account locks it out of sign-in immediately.
 - Authorization is enforced by policies: `CanEdit` (Admin + Standard) guards create/edit/delete
   actions in both the UI and the REST API; `AdminOnly` guards hard delete and settings.
 
@@ -77,6 +79,14 @@ Every response includes defensive headers (see `Security` config section):
 
 - The database is **not** published on the network in any provided deployment. Only the HTTP
   port is exposed; with PostgreSQL, the DB stays on the internal compose network.
+
+## Email
+
+Password-reset and confirmation emails are sent over **SMTP** when the `Email` section is
+configured (`Email:Host` + `Email:From`, with optional `Username`/`Password`/`UseSsl`/`Port`).
+If it's left blank, no email is sent — fine for a LAN install where login needs no email
+confirmation, but "forgot password" then can't deliver a link (an admin can reset passwords from
+the user-management screen instead). SMTP failures are logged, never surfaced to the user.
 
 ## Recommended operational hygiene
 

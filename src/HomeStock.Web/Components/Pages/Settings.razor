@@ -77,6 +77,11 @@
             <a class="btn btn-outline-primary btn-sm" href="Account/Manage/TwoFactorAuthentication">
                 <i class="bi bi-shield-plus"></i> Set up two-factor authentication
             </a>
+            <AuthorizeView Policy="@Roles.AdminPolicy">
+                <a class="btn btn-outline-secondary btn-sm ms-2" href="/settings/users">
+                    <i class="bi bi-people"></i> Manage users &amp; roles
+                </a>
+            </AuthorizeView>
         </div>
     </div>
 </div>
