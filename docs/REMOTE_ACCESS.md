@@ -11,8 +11,12 @@ proxies, and rate limiting — so enabling remote access is configuration, not a
 
 ## What the app already supports
 
-- **Reverse-proxy headers** — `X-Forwarded-For` / `X-Forwarded-Proto` are honoured, but only
-  from proxies you list in `ReverseProxy:KnownProxies` (spoofed headers are ignored otherwise).
+- **Reverse-proxy headers** — `X-Forwarded-For` / `X-Forwarded-Proto` / `X-Forwarded-Prefix` are
+  honoured, but only from proxies you list in `ReverseProxy:KnownProxies` (spoofed headers are
+  ignored otherwise).
+- **Sub-path hosting** — to host under a path like `https://host/homestock`, either have the proxy
+  send `X-Forwarded-Prefix: /homestock`, or set `ReverseProxy:BasePath=/homestock`. HomeStock sets
+  `PathBase` and its `<base href>` accordingly so all links resolve correctly.
 - **HTTPS & secure cookies** — cookies are `Secure` automatically over HTTPS; set
   `EnableHttpsRedirection=true` when a TLS endpoint terminates in front of the app.
 - **Rate limiting & lockout** — login attempts are rate-limited per IP and Identity locks

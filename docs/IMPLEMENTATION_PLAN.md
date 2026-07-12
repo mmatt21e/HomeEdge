@@ -67,10 +67,11 @@ See [PHASE1_CHECKLIST.md](PHASE1_CHECKLIST.md).
 - Backup & restore with validation; expanded change-history / activity views.
   See [PHASE3_CHECKLIST.md](PHASE3_CHECKLIST.md).
 
-### Phase 4 — Hardening & reach
-- PWA polish (offline shell already scaffolded), install prompts, camera permissions.
-- Reverse-proxy/base-URL support (headers already wired), MFA, security review.
-- Deployment hardening, broader automated test coverage, PostgreSQL migration guide.
+### Phase 4 — Hardening & reach ✅ (complete)
+- PWA install prompt + improved offline app shell; camera permissions for scanning.
+- Reverse-proxy/base-path support, MFA surfacing, and a security review.
+- Security headers/CSP, data-protection key persistence, deployment hardening, and integration
+  tests. See [PHASE4_CHECKLIST.md](PHASE4_CHECKLIST.md).
 
 ## After each phase
 

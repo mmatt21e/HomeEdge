@@ -21,16 +21,23 @@ RUN dotnet publish src/HomeStock.Web/HomeStock.Web.csproj -c Release -o /app/pub
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
+LABEL org.opencontainers.image.title="HomeStock" \
+      org.opencontainers.image.description="Self-hosted home inventory application" \
+      org.opencontainers.image.source="https://github.com/mmatt21e/HomeEdge" \
+      org.opencontainers.image.licenses="MIT"
+
 # Run as the non-root user provided by the base image.
 USER $APP_UID
 
 COPY --from=build /app/publish .
 
-# Data (SQLite DB + attachments) lives on a mounted volume, outside the image.
+# Data (SQLite DB + attachments + data-protection keys) lives on a mounted volume,
+# outside the image, so the container root filesystem can be mounted read-only.
 ENV ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production \
     ConnectionStrings__DefaultConnection="Data Source=/data/homestock.db;Cache=Shared" \
-    Storage__AttachmentsPath="/data/attachments"
+    Storage__AttachmentsPath="/data/attachments" \
+    DataProtection__KeysPath="/data/keys"
 
 EXPOSE 8080
 

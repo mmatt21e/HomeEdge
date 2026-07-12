@@ -1,5 +1,6 @@
 using System.Threading.RateLimiting;
 using HomeStock.Application;
+using Microsoft.AspNetCore.DataProtection;
 using HomeStock.Domain.Entities;
 using HomeStock.Domain.Enums;
 using HomeStock.Infrastructure;
@@ -86,7 +87,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 // ---- Reverse-proxy / forwarded headers (for future remote access) ----
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // XForwardedPrefix lets a proxy host the app under a sub-path (e.g. /homestock) and have the
+    // framework set PathBase automatically, so links and the <base href> stay correct.
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedPrefix;
     // Trusted proxies come from configuration; defaults clear the known lists so only
     // configured proxies are honoured (avoids spoofed forwarded headers).
     options.KnownIPNetworks.Clear();
@@ -110,6 +113,21 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
+// ---- Data protection keys (persisted so auth cookies survive restarts & scale-out) ----
+// Stored on the data volume by default; enables a read-only container root filesystem.
+var keysPath = builder.Configuration["DataProtection:KeysPath"] ?? "data/keys";
+Directory.CreateDirectory(keysPath);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
+    .SetApplicationName("HomeStock");
+
+// ---- HSTS (only sent over HTTPS; safe to configure regardless) ----
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+});
+
 // ---- Health checks (app, database, attachment storage) ----
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ApplicationDbContext>("database")
@@ -119,6 +137,14 @@ var app = builder.Build();
 
 // Honour proxy headers before anything else in the pipeline.
 app.UseForwardedHeaders();
+
+// Allow hosting under a sub-path even without a proxy prefix header (explicit config).
+var basePath = builder.Configuration["ReverseProxy:BasePath"];
+if (!string.IsNullOrWhiteSpace(basePath))
+    app.UsePathBase(basePath);
+
+// Defensive response headers (CSP, nosniff, frame options, referrer, permissions policy).
+app.UseSecurityHeaders();
 
 if (app.Environment.IsDevelopment())
 {

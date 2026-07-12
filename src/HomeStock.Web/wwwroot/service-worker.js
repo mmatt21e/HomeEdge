@@ -2,7 +2,7 @@
 // Caches static assets and serves an offline fallback page for navigations when the
 // server is unreachable. Data-entry features require the server and are NOT offline-capable;
 // this only keeps the shell usable and degrades gracefully (see offline.html).
-const CACHE = 'homestock-shell-v1';
+const CACHE = 'homestock-shell-v2';
 const SHELL = [
     '/',
     '/offline.html',
@@ -10,8 +10,10 @@ const SHELL = [
     '/js/homestock.js',
     '/manifest.webmanifest',
     '/icons/icon-192.png',
+    '/icons/icon-512.png',
     '/lib/bootstrap/dist/css/bootstrap.min.css',
-    '/lib/bootstrap-icons/font/bootstrap-icons.min.css'
+    '/lib/bootstrap-icons/font/bootstrap-icons.min.css',
+    '/lib/bootstrap-icons/font/fonts/bootstrap-icons.woff2'
 ];
 
 self.addEventListener('install', (event) => {

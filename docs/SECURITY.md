@@ -25,7 +25,32 @@
 
 - Authentication cookies are `HttpOnly` and `SameSite=Lax`. Their `Secure` flag follows the
   request scheme (`SameAsRequest`) so plain-HTTP LAN use works while HTTPS gets secure cookies.
-- Behind TLS (reverse proxy / tunnel / VPN with HTTPS), set `EnableHttpsRedirection=true`.
+- `SameSite=Lax` also means the auth cookie is **not** sent on cross-site POST/PUT/DELETE, which
+  mitigates CSRF against the REST API (no CORS is enabled either).
+- Behind TLS (reverse proxy / tunnel / VPN with HTTPS), set `EnableHttpsRedirection=true`. HSTS
+  (1 year, includeSubDomains) is sent over HTTPS.
+
+## Security response headers
+
+Every response includes defensive headers (see `Security` config section):
+
+- `Content-Security-Policy` — restricts scripts/styles/images/connections to same-origin (plus
+  `data:` images for QR codes and `blob:` workers for the scanner). It permits `'unsafe-inline'`
+  for the Blazor import map and scoped styles; tighten with nonces if you expose HomeStock
+  publicly. Toggle with `Security:EnableContentSecurityPolicy`, or override
+  `Security:ContentSecurityPolicy`.
+- `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (anti-clickjacking),
+  `Referrer-Policy: strict-origin-when-cross-origin`, `Cross-Origin-Opener-Policy: same-origin`,
+  and a `Permissions-Policy` that allows the camera (for scanning) but disables microphone and
+  geolocation.
+
+## Data protection at rest
+
+- ASP.NET Core **data-protection keys** (used to encrypt auth cookies/tokens) are persisted to
+  `DataProtection:KeysPath` (the `/data/keys` volume in Docker) so logins survive restarts.
+- By default the keys are stored **unencrypted at rest** — appropriate for a single self-hosted
+  instance. Protect the data volume with filesystem permissions and back it up. To encrypt the
+  keys, configure a key-encryption provider (e.g. certificate or platform key store).
 
 ## Abuse resistance
 

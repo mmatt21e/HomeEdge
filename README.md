@@ -5,13 +5,14 @@ your household — from any phone, tablet, or computer on your local network. Ru
 machine, keeps your data on your own disk, and is built so you can add secure remote access
 later without rewriting anything.
 
-> **Status:** Phases 1–3 complete. Phase 1 delivered the foundations (auth, database, items,
-> categories, locations, responsive UI, Docker); **Phase 2** added photo/document uploads,
-> phone-camera barcode/QR scanning, CSV/JSON export, a guided CSV import wizard, and
-> **downloadable installers/upgraders** with an automated release pipeline; **Phase 3** adds
-> lending, location audits with discrepancy reports, printable inventory/insurance reports,
-> backup & restore, and a change-activity feed. Phase 4 (PWA/reverse-proxy/MFA hardening,
-> security review) is planned — see [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+> **Status:** All four phases complete. **Phase 1** — foundations (auth, database, items,
+> categories, locations, responsive UI, Docker); **Phase 2** — photo/document uploads, phone-camera
+> barcode/QR scanning, CSV/JSON export, a guided CSV import wizard, and **downloadable
+> installers/upgraders** with an automated release pipeline; **Phase 3** — lending, location audits
+> with discrepancy reports, printable inventory/insurance reports, backup & restore, and a
+> change-activity feed; **Phase 4** — PWA install, reverse-proxy/sub-path support, MFA, security
+> headers/CSP, deployment hardening, and integration tests. See the phase checklists in
+> [`docs/`](docs/) and [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ---
 
@@ -117,10 +118,11 @@ In **Development** the seed creates:
 dotnet test HomeStock.slnx
 ```
 
-43 unit tests cover the category, location, item, dashboard, attachment, import/export, lending,
-audit, and backup/restore business logic (duplicate detection, history recording, move-cycle
-prevention, search/filtering, aggregation, file storage, CSV mapping/validation/commit, loan
-lifecycle, audit outcomes, additive restore) against a real in-memory SQLite database.
+48 tests run on every build: 43 unit tests over the category, location, item, dashboard,
+attachment, import/export, lending, audit, and backup/restore business logic (against a real
+in-memory SQLite database), plus 5 in-process **integration tests** (WebApplicationFactory) that
+exercise the real pipeline — health endpoints, security headers, anonymous→login redirect, and
+API authorization.
 
 ---
 
@@ -203,6 +205,7 @@ own set — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#databases-and-migr
 | [Phase 1 checklist](docs/PHASE1_CHECKLIST.md) | What was delivered in Phase 1 |
 | [Phase 2 checklist](docs/PHASE2_CHECKLIST.md) | What was delivered in Phase 2 |
 | [Phase 3 checklist](docs/PHASE3_CHECKLIST.md) | What was delivered in Phase 3 |
+| [Phase 4 checklist](docs/PHASE4_CHECKLIST.md) | Hardening, PWA, MFA, tests + security review |
 | [Releases & installers](docs/RELEASES.md) | Downloadable installers, upgrades, cutting releases |
 | [Architecture](docs/ARCHITECTURE.md) | Layers, DI, data model, migrations |
 | [Local network deployment](docs/LOCAL_NETWORK_DEPLOYMENT.md) | Docker, IP/hostname access |

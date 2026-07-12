@@ -1,0 +1,43 @@
+@inject IJSRuntime JS
+@inject ToastService Toasts
+
+@if (!_standalone)
+{
+    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="Install">
+        <i class="bi bi-download"></i> Install app
+    </button>
+}
+else
+{
+    <span class="text-secondary small"><i class="bi bi-check-circle"></i> Installed</span>
+}
+
+@code {
+    private bool _standalone;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _standalone = await JS.InvokeAsync<bool>("homestockPwa.isStandalone");
+                StateHasChanged();
+            }
+            catch { /* JS not ready */ }
+        }
+    }
+
+    private async Task Install()
+    {
+        var outcome = await JS.InvokeAsync<string>("homestockPwa.promptInstall");
+        switch (outcome)
+        {
+            case "accepted": Toasts.Success("Installing HomeStock…"); break;
+            case "dismissed": break;
+            default:
+                Toasts.Info("To install: use your browser menu → “Install app” / “Add to Home Screen”.");
+                break;
+        }
+    }
+}

@@ -33,6 +33,15 @@ services:
     volumes:
       - homestock-data:/data
       - ./deploy/backups:/backups
+    # ---- Hardening ----
+    # The app writes only to the /data volume and /tmp, so the container root can be read-only.
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     healthcheck:
       test: ["CMD", "/bin/sh", "-c", "wget -qO- http://127.0.0.1:8080/health/ready || exit 1"]
       interval: 30s

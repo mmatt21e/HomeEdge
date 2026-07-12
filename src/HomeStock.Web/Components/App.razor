@@ -1,10 +1,12 @@
+@inject IHttpContextAccessor HttpContextAccessor
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <base href="/" />
+    @* Base href follows the request PathBase so the app works when hosted under a sub-path. *@
+    <base href="@BasePath" />
     <ResourcePreloader />
     <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
     <link rel="stylesheet" href="@Assets["lib/bootstrap-icons/font/bootstrap-icons.min.css"]" />
@@ -42,3 +44,9 @@
 </body>
 
 </html>
+
+@code {
+    // Trailing slash is required for a valid <base href>.
+    private string BasePath =>
+        (HttpContextAccessor.HttpContext?.Request.PathBase.Value?.TrimEnd('/') ?? string.Empty) + "/";
+}

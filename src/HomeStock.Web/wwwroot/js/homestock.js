@@ -19,6 +19,32 @@ window.homestock = {
     }
 };
 
+// ---- PWA install prompt handling ----
+// Capture the browser's install prompt so the app can offer an "Install" button on demand.
+window.homestockPwa = (function () {
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredPrompt = e;
+    });
+    window.addEventListener('appinstalled', function () { deferredPrompt = null; });
+    return {
+        canInstall: function () { return deferredPrompt !== null; },
+        // Returns 'accepted', 'dismissed', or 'unavailable'.
+        promptInstall: async function () {
+            if (!deferredPrompt) return 'unavailable';
+            deferredPrompt.prompt();
+            const choice = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            return choice && choice.outcome ? choice.outcome : 'dismissed';
+        },
+        isStandalone: function () {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true;
+        }
+    };
+})();
+
 // Register the offline app-shell service worker (progressive enhancement).
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {

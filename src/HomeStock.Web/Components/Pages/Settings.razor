@@ -59,9 +59,24 @@
         </div>
 
         <div class="panel mt-3">
-            <h3 class="h6">Appearance</h3>
+            <h3 class="h6">Appearance &amp; install</h3>
             <p class="text-secondary small mb-2">Switch between light, dark and system themes.</p>
-            <ThemeToggle />
+            <div class="d-flex gap-2 align-items-center">
+                <ThemeToggle />
+                <InstallButton />
+            </div>
+            <p class="text-secondary small mt-2 mb-0">Install HomeStock to your device's home screen for an app-like experience.</p>
+        </div>
+
+        <div class="panel mt-3">
+            <h3 class="h6"><i class="bi bi-shield-lock"></i> Security</h3>
+            <p class="text-secondary small mb-2">
+                Enable <strong>two-factor authentication</strong> for an extra layer of protection —
+                strongly recommended for any account reachable from outside your home network.
+            </p>
+            <a class="btn btn-outline-primary btn-sm" href="Account/Manage/TwoFactorAuthentication">
+                <i class="bi bi-shield-plus"></i> Set up two-factor authentication
+            </a>
         </div>
     </div>
 </div>
@@ -74,7 +89,7 @@
         System.Reflection.Assembly.GetExecutingAssembly()
             .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
-            .FirstOrDefault()?.InformationalVersion.Split('+')[0] ?? "0.3.0";
+            .FirstOrDefault()?.InformationalVersion.Split('+')[0] ?? "1.0.0";
 
     protected override async Task OnInitializedAsync()
     {
