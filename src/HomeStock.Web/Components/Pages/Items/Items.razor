@@ -10,7 +10,12 @@
 
 <div class="page-header">
     <h1>Items</h1>
-    <a class="btn btn-primary" href="/items/new"><i class="bi bi-plus-lg"></i> Add item</a>
+    <AuthorizeView Policy="@Roles.CanEditPolicy">
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" href="/items/from-photo"><i class="bi bi-camera"></i> Add from photo</a>
+            <a class="btn btn-primary" href="/items/new"><i class="bi bi-plus-lg"></i> Add item</a>
+        </div>
+    </AuthorizeView>
 </div>
 
 <div class="filter-bar">

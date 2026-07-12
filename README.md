@@ -118,11 +118,11 @@ In **Development** the seed creates:
 dotnet test HomeStock.slnx
 ```
 
-48 tests run on every build: 43 unit tests over the category, location, item, dashboard,
-attachment, import/export, lending, audit, and backup/restore business logic (against a real
-in-memory SQLite database), plus 5 in-process **integration tests** (WebApplicationFactory) that
-exercise the real pipeline — health endpoints, security headers, anonymous→login redirect, and
-API authorization.
+54 tests run on every build: 49 unit tests over the category, location, item, dashboard,
+attachment, import/export, lending, audit, backup/restore, and AI vision-extraction logic
+(against a real in-memory SQLite database and a stubbed HTTP handler), plus 5 in-process
+**integration tests** (WebApplicationFactory) that exercise the real pipeline — health endpoints,
+security headers, anonymous→login redirect, and API authorization.
 
 ---
 
@@ -164,6 +164,15 @@ own set — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#databases-and-migr
 - **Responsive UI** — mobile-first, large touch targets, bottom nav on phones, sidebar on
   desktop, **dark/light/system themes**, toasts, confirmations, empty states, loading
   indicators, and an installable PWA shell.
+
+## Feature: Photo → Inventory (AI vision)
+
+Snap a photo and let an AI vision model suggest items to add — several items in a scene, or a
+single product's details — with a **review-before-save** step (Items → *Add from photo*). It's
+**optional and off by default**; enable it by pointing HomeStock at any OpenAI-compatible vision
+endpoint, including **free** options (OpenRouter, Groq, Google Gemini free tiers) or a **local
+Ollama** model for full privacy. The image is sent server-side, so your API key never reaches the
+browser. Setup and provider examples: [`docs/PHOTO_IMPORT.md`](docs/PHOTO_IMPORT.md).
 
 ## Features (Phase 3)
 
@@ -207,6 +216,7 @@ own set — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#databases-and-migr
 | [Phase 3 checklist](docs/PHASE3_CHECKLIST.md) | What was delivered in Phase 3 |
 | [Phase 4 checklist](docs/PHASE4_CHECKLIST.md) | Hardening, PWA, MFA, tests + security review |
 | [Releases & installers](docs/RELEASES.md) | Downloadable installers, upgrades, cutting releases |
+| [Photo → inventory](docs/PHOTO_IMPORT.md) | Enable AI photo import (free & local provider options) |
 | [Architecture](docs/ARCHITECTURE.md) | Layers, DI, data model, migrations |
 | [Local network deployment](docs/LOCAL_NETWORK_DEPLOYMENT.md) | Docker, IP/hostname access |
 | [Backup & restore](docs/BACKUP_RESTORE.md) | Backing up and restoring data |

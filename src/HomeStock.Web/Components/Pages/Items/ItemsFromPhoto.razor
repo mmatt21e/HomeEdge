@@ -1,0 +1,259 @@
+@page "/items/from-photo"
+@attribute [Authorize(Policy = HomeStock.Domain.Enums.Roles.CanEditPolicy)]
+@rendermode InteractiveServer
+@using HomeStock.Domain.Enums
+@inject IVisionExtractor Vision
+@inject ICategoryService CategoryService
+@inject ILocationService LocationService
+@inject IItemService ItemService
+@inject IAttachmentService Attachments
+@inject NavigationManager Nav
+@inject ToastService Toasts
+
+<PageTitle>Add from photo · HomeStock</PageTitle>
+
+<div class="page-header">
+    <div>
+        <a href="/items" class="small text-secondary"><i class="bi bi-chevron-left"></i> Items</a>
+        <h1>Add from photo</h1>
+    </div>
+</div>
+
+@if (!Vision.IsConfigured)
+{
+    <EmptyState Icon="bi-camera" Title="Photo import isn't set up yet"
+                Message="An administrator needs to configure a vision provider (a free option works). See the Photo Import guide in the docs.">
+        <Action><a class="btn btn-outline-secondary" href="/reports"><i class="bi bi-arrow-left"></i> Back</a></Action>
+    </EmptyState>
+}
+else if (_step == 1)
+{
+    <div class="panel">
+        <p class="text-secondary small">
+            Take or choose a photo and HomeStock will suggest items to add. You'll review and edit everything
+            before anything is saved. Powered by <span class="tree-code">@Vision.ProviderLabel</span>.
+        </p>
+
+        <div class="btn-group mb-3" role="group">
+            <input type="radio" class="btn-check" name="mode" id="modeScene" checked="@(_mode == VisionMode.Scene)"
+                   @onchange="() => _mode = VisionMode.Scene" />
+            <label class="btn btn-outline-primary" for="modeScene"><i class="bi bi-grid-3x3-gap"></i> Multiple items (scene)</label>
+
+            <input type="radio" class="btn-check" name="mode" id="modeSingle" checked="@(_mode == VisionMode.SingleProduct)"
+                   @onchange="() => _mode = VisionMode.SingleProduct" />
+            <label class="btn btn-outline-primary" for="modeSingle"><i class="bi bi-box"></i> Single product</label>
+        </div>
+
+        <div>
+            <label class="form-label small mb-1">Photo</label>
+            <InputFile class="form-control" accept="image/*" capture="environment" OnChange="OnPhotoSelected" disabled="@_busy" />
+            <div class="form-text">On a phone this opens the camera. Max @(_maxMb) MB.</div>
+        </div>
+
+        @if (_busy)
+        {
+            <div class="loading-indicator"><span class="spinner-border spinner-border-sm"></span>
+                <span>Analysing photo… this can take a few seconds.</span></div>
+        }
+        @if (_previewUrl is not null)
+        {
+            <img src="@_previewUrl" alt="Selected photo" class="mt-3" style="max-height:220px;border-radius:.5rem;" />
+        }
+    </div>
+}
+else if (_step == 2)
+{
+    <div class="panel">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h3 class="h6 mb-0">Review @_detected.Count detected item(s)</h3>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="Restart">Start over</button>
+        </div>
+        <p class="text-secondary small">Untick anything you don't want, and edit names/categories/quantities. Nothing is saved until you confirm.</p>
+
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead><tr><th style="width:2rem"></th><th>Name</th><th>Category</th><th style="width:5rem">Qty</th><th>Details</th></tr></thead>
+                <tbody>
+                    @foreach (var row in _detected)
+                    {
+                        <tr class="@(row.Include ? "" : "text-secondary")">
+                            <td><input type="checkbox" class="form-check-input" @bind="row.Include" /></td>
+                            <td><input class="form-control form-control-sm" @bind="row.Name" /></td>
+                            <td>
+                                <select class="form-select form-select-sm" @bind="row.CategoryId">
+                                    <option value="0">— None —</option>
+                                    @foreach (var c in _categories) { <option value="@c.Id">@c.Name</option> }
+                                </select>
+                            </td>
+                            <td><input type="number" min="1" class="form-control form-control-sm" @bind="row.Quantity" /></td>
+                            <td class="small text-secondary">
+                                @string.Join(" · ", new[] { row.Brand, row.Manufacturer, row.ModelNumber }.Where(x => !string.IsNullOrWhiteSpace(x)))
+                                @if (row.Confidence is { } conf) { <span class="ms-1">(@((int)Math.Round(conf * 100))%)</span> }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="row g-2 align-items-end mt-1">
+            <div class="col-12 col-md-5">
+                <label class="form-label small mb-1">Assign all to location (optional)</label>
+                <select class="form-select form-select-sm" @bind="_assignLocationId">
+                    <option value="0">— None —</option>
+                    @foreach (var n in _locations) { <option value="@n.Location.Id">@n.Path</option> }
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="attachChk" @bind="_attachPhoto" />
+                    <label class="form-check-label small" for="attachChk">Attach the photo to created items</label>
+                </div>
+            </div>
+            <div class="col-12 col-md-3 d-flex justify-content-md-end">
+                <button class="btn btn-primary" @onclick="Confirm" disabled="@(_busy || !_detected.Any(d => d.Include))">
+                    @if (_busy) { <span class="spinner-border spinner-border-sm"></span> }
+                    Create @_detected.Count(d => d.Include) item(s)
+                </button>
+            </div>
+        </div>
+    </div>
+}
+else if (_step == 3)
+{
+    <div class="panel">
+        <div class="alert alert-success"><i class="bi bi-check-circle"></i> Created @_createdCount item(s) from the photo.</div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" href="/items">View items</a>
+            <button class="btn btn-outline-secondary" @onclick="Restart">Add another photo</button>
+        </div>
+    </div>
+}
+
+@code {
+    private int _step = 1;
+    private VisionMode _mode = VisionMode.Scene;
+    private bool _busy;
+    private byte[]? _imageBytes;
+    private string _contentType = "image/jpeg";
+    private string? _previewUrl;
+    private int _createdCount;
+    private int _assignLocationId;
+    private bool _attachPhoto = true;
+
+    private readonly int _maxMb = 6;
+    private long MaxBytes => _maxMb * 1024L * 1024L;
+
+    private IReadOnlyList<CategoryDto> _categories = Array.Empty<CategoryDto>();
+    private IReadOnlyList<LocationTreeNode> _locations = Array.Empty<LocationTreeNode>();
+    private List<Row> _detected = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Vision.IsConfigured) return;
+        _categories = await CategoryService.GetAllAsync();
+        _locations = await LocationService.GetTreeAsync();
+    }
+
+    private async Task OnPhotoSelected(InputFileChangeEventArgs e)
+    {
+        _busy = true;
+        try
+        {
+            using var ms = new MemoryStream();
+            await using (var s = e.File.OpenReadStream(MaxBytes)) await s.CopyToAsync(ms);
+            _imageBytes = ms.ToArray();
+            _contentType = string.IsNullOrWhiteSpace(e.File.ContentType) ? "image/jpeg" : e.File.ContentType;
+            _previewUrl = $"data:{_contentType};base64,{Convert.ToBase64String(_imageBytes)}";
+
+            var result = await Vision.ExtractAsync(new MemoryStream(_imageBytes), _contentType, _mode);
+            if (!result.Succeeded) { Toasts.Error(string.Join(" ", result.Errors)); return; }
+
+            _detected = result.Value!.Items.Select(MapRow).ToList();
+            if (_detected.Count == 0) { Toasts.Warning("No items were detected. Try a clearer or closer photo."); return; }
+            _step = 2;
+        }
+        catch (IOException)
+        {
+            Toasts.Error($"Image exceeds the {_maxMb} MB limit.");
+        }
+        finally { _busy = false; }
+    }
+
+    private Row MapRow(DetectedItem d) => new()
+    {
+        Include = true,
+        Name = d.Name,
+        Quantity = d.Quantity,
+        Brand = d.Brand,
+        Manufacturer = d.Manufacturer,
+        ModelNumber = d.ModelNumber,
+        Description = d.Description,
+        Confidence = d.Confidence,
+        // Map the model's category text to an existing category, if one matches by name.
+        CategoryId = _categories.FirstOrDefault(c =>
+            string.Equals(c.Name, d.Category, StringComparison.OrdinalIgnoreCase))?.Id ?? 0
+    };
+
+    private async Task Confirm()
+    {
+        _busy = true;
+        var created = 0;
+        try
+        {
+            foreach (var row in _detected.Where(r => r.Include && !string.IsNullOrWhiteSpace(r.Name)))
+            {
+                var model = new ItemEditModel
+                {
+                    Name = row.Name.Trim(),
+                    Quantity = row.Quantity < 1 ? 1 : row.Quantity,
+                    CategoryId = row.CategoryId > 0 ? row.CategoryId : null,
+                    LocationId = _assignLocationId > 0 ? _assignLocationId : null,
+                    Brand = row.Brand,
+                    Manufacturer = row.Manufacturer,
+                    ModelNumber = row.ModelNumber,
+                    Description = row.Description
+                };
+                var result = await ItemService.CreateAsync(model);
+                if (!result.Succeeded) { Toasts.Error($"{row.Name}: {string.Join(" ", result.Errors)}"); continue; }
+                created++;
+
+                if (_attachPhoto && _imageBytes is not null)
+                {
+                    var name = $"photo-import{ExtensionFor(_contentType)}";
+                    await Attachments.AddAsync(result.Value, new MemoryStream(_imageBytes), name, _contentType, AttachmentType.Photo, "Imported from photo");
+                }
+            }
+            _createdCount = created;
+            if (created > 0) { Toasts.Success($"Created {created} item(s)."); _step = 3; }
+        }
+        finally { _busy = false; }
+    }
+
+    private void Restart()
+    {
+        _step = 1; _detected = new(); _imageBytes = null; _previewUrl = null; _createdCount = 0; _assignLocationId = 0;
+    }
+
+    private static string ExtensionFor(string contentType) => contentType.ToLowerInvariant() switch
+    {
+        "image/png" => ".png",
+        "image/webp" => ".webp",
+        "image/gif" => ".gif",
+        "image/heic" => ".heic",
+        _ => ".jpg"
+    };
+
+    private sealed class Row
+    {
+        public bool Include { get; set; } = true;
+        public string Name { get; set; } = "";
+        public int CategoryId { get; set; }
+        public int Quantity { get; set; } = 1;
+        public string? Brand { get; set; }
+        public string? Manufacturer { get; set; }
+        public string? ModelNumber { get; set; }
+        public string? Description { get; set; }
+        public double? Confidence { get; set; }
+    }
+}

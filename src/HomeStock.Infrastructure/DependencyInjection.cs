@@ -49,6 +49,11 @@ public static class DependencyInjection
         services.AddSingleton<ICodeGenerator, CodeGenerator>();
         services.AddScoped<IDatabaseInitializer, DatabaseInitializer>();
 
+        // Photo -> inventory extraction (any OpenAI-compatible vision endpoint; disabled until configured).
+        services.Configure<Vision.VisionOptions>(configuration.GetSection(Vision.VisionOptions.SectionName));
+        services.AddHttpClient(Vision.OpenAiCompatibleVisionExtractor.HttpClientName);
+        services.AddScoped<IVisionExtractor, Vision.OpenAiCompatibleVisionExtractor>();
+
         return services;
     }
 
