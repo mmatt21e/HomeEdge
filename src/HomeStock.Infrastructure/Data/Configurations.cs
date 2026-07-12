@@ -158,6 +158,22 @@ public class ItemHistoryConfiguration : IEntityTypeConfiguration<ItemHistory>
     }
 }
 
+public class InventoryTransactionConfiguration : IEntityTypeConfiguration<InventoryTransaction>
+{
+    public void Configure(EntityTypeBuilder<InventoryTransaction> b)
+    {
+        b.Property(t => t.Quantity).HasPrecision(18, 3);
+        b.Property(t => t.BalanceAfter).HasPrecision(18, 3);
+        b.Property(t => t.Note).HasMaxLength(500);
+        b.Property(t => t.UserId).HasMaxLength(450);
+        b.Property(t => t.UserName).HasMaxLength(256);
+        b.HasIndex(t => t.ItemId);
+        b.HasIndex(t => t.Timestamp);
+        b.HasIndex(t => t.ProjectId);
+        b.HasOne(t => t.Item).WithMany().HasForeignKey(t => t.ItemId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 public class ApplicationSettingConfiguration : IEntityTypeConfiguration<ApplicationSetting>
 {
     public void Configure(EntityTypeBuilder<ApplicationSetting> b)

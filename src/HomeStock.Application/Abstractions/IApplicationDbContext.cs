@@ -20,6 +20,7 @@ public interface IApplicationDbContext
     DbSet<InventoryAudit> Audits { get; }
     DbSet<InventoryAuditItem> AuditItems { get; }
     DbSet<ItemHistory> ItemHistory { get; }
+    DbSet<InventoryTransaction> Transactions { get; }
     DbSet<ApplicationSetting> Settings { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

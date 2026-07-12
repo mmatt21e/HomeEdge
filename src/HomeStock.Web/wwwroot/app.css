@@ -212,6 +212,11 @@ a { color: var(--hs-brand); }
     a[href]:after { content: ""; } /* don't print URLs */
 }
 
+/* ---------- Stock figures ---------- */
+.stock-figures { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+.stock-figures .stock-num { display: block; font-size: 1.3rem; font-weight: 700; line-height: 1.1; }
+.stock-figures .stock-label { font-size: .72rem; color: var(--bs-secondary-color); text-transform: uppercase; letter-spacing: .03em; }
+
 /* Utility */
 .clickable { cursor: pointer; }
 .text-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

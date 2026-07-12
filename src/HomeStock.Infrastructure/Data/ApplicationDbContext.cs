@@ -24,6 +24,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<InventoryAudit> Audits => Set<InventoryAudit>();
     public DbSet<InventoryAuditItem> AuditItems => Set<InventoryAuditItem>();
     public DbSet<ItemHistory> ItemHistory => Set<ItemHistory>();
+    public DbSet<InventoryTransaction> Transactions => Set<InventoryTransaction>();
     public DbSet<ApplicationSetting> Settings => Set<ApplicationSetting>();
 
     protected override void OnModelCreating(ModelBuilder builder)

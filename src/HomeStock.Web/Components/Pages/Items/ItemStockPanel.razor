@@ -1,0 +1,144 @@
+@using HomeStock.Domain.Enums
+@inject IInventoryLedgerService Ledger
+@inject ToastService Toasts
+
+<div class="panel">
+    <h3 class="h6"><i class="bi bi-boxes"></i> Stock</h3>
+
+    @if (_status is null)
+    {
+        <LoadingIndicator />
+    }
+    else
+    {
+        <div class="stock-figures mb-2">
+            <div><span class="stock-num">@_status.OnHandDisplay</span><span class="stock-label">on hand</span></div>
+            <div><span class="stock-num">@_status.AvailableDisplay</span><span class="stock-label">available</span></div>
+            @if (_status.CheckedOut > 0)
+            {
+                <div><span class="stock-num text-warning">@_status.CheckedOutDisplay</span><span class="stock-label">checked out</span></div>
+            }
+        </div>
+
+        <AuthorizeView Policy="@Roles.CanEditPolicy">
+            @if (_action is null)
+            {
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-outline-primary btn-sm" @onclick="() => Begin(TransactionType.CheckOut)"><i class="bi bi-box-arrow-up"></i> Take out</button>
+                    <button class="btn btn-outline-primary btn-sm" @onclick="() => Begin(TransactionType.Return)" disabled="@(_status.CheckedOut <= 0)"><i class="bi bi-box-arrow-in-down"></i> Put back</button>
+                    <button class="btn btn-outline-danger btn-sm" @onclick="() => Begin(TransactionType.Consume)"><i class="bi bi-dash-circle"></i> Use</button>
+                    <button class="btn btn-outline-success btn-sm" @onclick="() => Begin(TransactionType.Restock)"><i class="bi bi-plus-circle"></i> Restock</button>
+                </div>
+            }
+            else
+            {
+                <div class="row g-2 align-items-end">
+                    <div class="col-6 col-sm-4">
+                        <label class="form-label small mb-1">@ActionLabel amount@(string.IsNullOrEmpty(_status.Unit) ? "" : $" ({_status.Unit})")</label>
+                        <input type="number" step="any" min="0" class="form-control form-control-sm" @bind="_amount" />
+                    </div>
+                    <div class="col-6 col-sm-5">
+                        <label class="form-label small mb-1">Note (optional)</label>
+                        <input class="form-control form-control-sm" @bind="_note" placeholder="e.g. kitchen circuit" />
+                    </div>
+                    <div class="col-12 col-sm-3 d-flex gap-2">
+                        <button class="btn btn-primary btn-sm" @onclick="Apply" disabled="@_busy">Confirm</button>
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="() => _action = null">Cancel</button>
+                    </div>
+                </div>
+            }
+        </AuthorizeView>
+
+        @if (_history.Count > 0)
+        {
+            <details class="mt-3">
+                <summary class="small text-secondary">Stock history (@_history.Count)</summary>
+                <ul class="list-unstyled small mt-2 mb-0">
+                    @foreach (var t in _history)
+                    {
+                        <li class="mb-1 d-flex justify-content-between">
+                            <span>
+                                <span class="badge text-bg-@BadgeClass(t.Type)">@Label(t.Type)</span>
+                                @CommonUnits.Format(t.Quantity, t.Unit)
+                                @if (!string.IsNullOrEmpty(t.Note)) { <span class="text-secondary">— @t.Note</span> }
+                            </span>
+                            <span class="text-secondary">@t.Timestamp.ToLocalTime().ToString("g")</span>
+                        </li>
+                    }
+                </ul>
+            </details>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int ItemId { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private StockStatus? _status;
+    private IReadOnlyList<TransactionDto> _history = Array.Empty<TransactionDto>();
+    private TransactionType? _action;
+    private decimal _amount = 1;
+    private string? _note;
+    private bool _busy;
+
+    private string ActionLabel => _action switch
+    {
+        TransactionType.CheckOut => "Take out",
+        TransactionType.Return => "Put back",
+        TransactionType.Consume => "Use",
+        TransactionType.Restock => "Restock",
+        _ => ""
+    };
+
+    protected override async Task OnParametersSetAsync() => await Load();
+
+    private async Task Load()
+    {
+        _status = await Ledger.GetStatusAsync(ItemId);
+        _history = await Ledger.GetForItemAsync(ItemId);
+    }
+
+    private void Begin(TransactionType type) { _action = type; _amount = 1; _note = null; }
+
+    private async Task Apply()
+    {
+        if (_action is null) return;
+        _busy = true;
+        try
+        {
+            var r = _action switch
+            {
+                TransactionType.CheckOut => await Ledger.CheckOutAsync(ItemId, _amount, _note),
+                TransactionType.Return => await Ledger.ReturnAsync(ItemId, _amount, _note),
+                TransactionType.Consume => await Ledger.ConsumeAsync(ItemId, _amount, _note),
+                TransactionType.Restock => await Ledger.RestockAsync(ItemId, _amount, _note),
+                _ => Result.Failure("Unknown action.")
+            };
+            if (!r.Succeeded) { Toasts.Error(string.Join(" ", r.Errors)); return; }
+            Toasts.Success($"{ActionLabel} recorded.");
+            _action = null;
+            await Load();
+            await OnChanged.InvokeAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    private static string Label(TransactionType t) => t switch
+    {
+        TransactionType.CheckOut => "Out",
+        TransactionType.Return => "Back",
+        TransactionType.Consume => "Used",
+        TransactionType.Restock => "Restock",
+        _ => "Adjust"
+    };
+
+    private static string BadgeClass(TransactionType t) => t switch
+    {
+        TransactionType.CheckOut => "primary",
+        TransactionType.Return => "info",
+        TransactionType.Consume => "danger",
+        TransactionType.Restock => "success",
+        _ => "secondary"
+    };
+}

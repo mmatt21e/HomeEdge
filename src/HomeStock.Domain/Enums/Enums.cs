@@ -72,6 +72,21 @@ public enum HistoryAction
     Moved = 10
 }
 
+/// <summary>A movement in the inventory ledger for an item.</summary>
+public enum TransactionType
+{
+    /// <summary>Took an amount out to use (temporarily). Reduces available, not on-hand.</summary>
+    CheckOut = 0,
+    /// <summary>Put a checked-out amount back. Restores available.</summary>
+    Return = 1,
+    /// <summary>Used an amount up permanently. Reduces on-hand.</summary>
+    Consume = 2,
+    /// <summary>Added stock (bought/found more). Increases on-hand.</summary>
+    Restock = 3,
+    /// <summary>Manual correction of the on-hand amount.</summary>
+    Adjust = 4
+}
+
 /// <summary>Application role names used with ASP.NET Core Identity.</summary>
 public static class Roles
 {
